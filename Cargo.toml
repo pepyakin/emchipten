@@ -1,0 +1,16 @@
+[package]
+name = "enchipify"
+version = "0.1.0"
+authors = ["Sergey Pepyakin <s.pepyakin@gmail.com>"]
+
+[dependencies]
+byteorder = "0.5"
+enum_primitive = "*"
+error-chain = "0.10.0"
+binaryen = { path = "..", version = "0.1.0" }
+
+[profile.dev]
+panic="abort"
+
+[profile.release]
+panic="abort"
