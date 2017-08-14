@@ -200,58 +200,46 @@ impl<'a> SubroutineBuilder<'a> {
     }
 }
 
-pub struct CFGBuilder<'a> {
-    rom: &'a [u8],
-}
+pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
+    let mut sub_builder = SubroutineBuilder::new(rom, 0);
+    let mut seen_calls = HashSet::new();
+    sub_builder.build_cfg(&mut seen_calls)?;
+    let start = sub_builder;
+    let mut subs = HashMap::new();
 
-impl<'a> CFGBuilder<'a> {
-    pub fn new(rom: &'a [u8]) -> CFGBuilder<'a> {
-        CFGBuilder {
-            rom,
-        }
+    let mut subroutine_stack = Vec::new();
+    for seen_call in seen_calls.iter().cloned() {
+        subroutine_stack.push(seen_call);
     }
 
-    pub fn build_cfg(&mut self) -> Result<CFG> {
-        let mut sub_builder = SubroutineBuilder::new(self.rom, 0);
-        let mut seen_calls = HashSet::new();
-        sub_builder.build_cfg(&mut seen_calls)?;
-        let start = sub_builder;
-        let mut subs = HashMap::new();
+    loop {
+        let subroutine_addr = match subroutine_stack.pop() {
+            Some(addr) => addr,
+            None => break,
+        };
 
-        let mut subroutine_stack = Vec::new();
-        for seen_call in seen_calls.iter().cloned() {
-            subroutine_stack.push(seen_call);
+        let mut sub_builder =
+            SubroutineBuilder::new(rom, (subroutine_addr.0 - 0x200) as usize);
+        let mut seen_calls_from_sr = HashSet::new();
+        sub_builder.build_cfg(&mut seen_calls_from_sr)?;
+        subs.insert(subroutine_addr.into(), sub_builder);
+
+        for seen in seen_calls.difference(&seen_calls_from_sr).cloned() {
+            subroutine_stack.push(seen);
         }
 
-        loop {
-            let subroutine_addr = match subroutine_stack.pop() {
-                Some(addr) => addr,
-                None => break,
-            };
-
-            let mut sub_builder =
-                SubroutineBuilder::new(self.rom, (subroutine_addr.0 - 0x200) as usize);
-            let mut seen_calls_from_sr = HashSet::new();
-            sub_builder.build_cfg(&mut seen_calls_from_sr)?;
-            subs.insert(subroutine_addr.into(), sub_builder);
-
-            for seen in seen_calls.difference(&seen_calls_from_sr).cloned() {
-                subroutine_stack.push(seen);
-            }
-
-            seen_calls = seen_calls
-                .intersection(&seen_calls_from_sr)
-                .cloned()
-                .collect();
-        }
-
-        let subroutines = subs.into_iter().map(|(k, v)| { (k, v.into()) }).collect();
-
-        Ok(CFG {
-            start: start.into(),
-            subroutines
-        })
+        seen_calls = seen_calls
+            .intersection(&seen_calls_from_sr)
+            .cloned()
+            .collect();
     }
+
+    let subroutines = subs.into_iter().map(|(k, v)| { (k, v.into()) }).collect();
+
+    Ok(CFG {
+        start: start.into(),
+        subroutines
+    })
 }
 
 #[derive(Clone, Debug)]

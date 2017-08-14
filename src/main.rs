@@ -17,11 +17,6 @@ use std::fs::File;
 use std::path::Path;
 use instruction::*;
 
-fn build_cfg(rom: &[u8]) -> Result<cfg::CFG> {
-    let mut builder = cfg::CFGBuilder::new(rom);
-    builder.build_cfg()
-}
-
 fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
     use std::io::Read;
 
@@ -38,7 +33,7 @@ fn main() {
 
     let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
-    let module = build_cfg(&rom_buffer).unwrap();
+    let module = cfg::build_cfg(&rom_buffer).unwrap();
     println!("{:#?}", module);
     // module.print();
 }
