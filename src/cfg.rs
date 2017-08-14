@@ -53,6 +53,7 @@ impl<'a> From<SubroutineBuilder<'a>> for Routine {
             bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
         }
         Routine {
+            entry: BasicBlockId(Addr(builder.addr as u16)),
             bbs
         }
     }
@@ -298,6 +299,7 @@ pub struct BasicBlock {
 
 #[derive(Debug)]
 pub struct Routine {
+    entry: BasicBlockId,
     bbs: HashMap<BasicBlockId, BasicBlock>
 }
 
