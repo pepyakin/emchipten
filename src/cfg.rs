@@ -48,13 +48,13 @@ impl<'a> From<SubroutineBuilder<'a>> for Routine {
 
             let basic_block = BasicBlock {
                 insts,
-                terminator: bb.terminator
+                terminator: bb.terminator,
             };
             bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
         }
         Routine {
             entry: BasicBlockId(Addr(builder.addr as u16)),
-            bbs
+            bbs,
         }
     }
 }
@@ -104,9 +104,7 @@ impl<'a> SubroutineBuilder<'a> {
                     pc - 2,
                     Terminator::Fallthrough { target: falltrough_addr },
                 ));
-                self.bbs.push(
-                    BB::new(pc, bb.end, bb.terminator),
-                );
+                self.bbs.push(BB::new(pc, bb.end, bb.terminator));
                 return Ok(());
             }
             None => {}
@@ -218,8 +216,7 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             None => break,
         };
 
-        let mut sub_builder =
-            SubroutineBuilder::new(rom, (subroutine_addr.0 - 0x200) as usize);
+        let mut sub_builder = SubroutineBuilder::new(rom, (subroutine_addr.0 - 0x200) as usize);
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
         subs.insert(subroutine_addr.into(), sub_builder);
@@ -234,11 +231,11 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             .collect();
     }
 
-    let subroutines = subs.into_iter().map(|(k, v)| { (k, v.into()) }).collect();
+    let subroutines = subs.into_iter().map(|(k, v)| (k, v.into())).collect();
 
     Ok(CFG {
         start: start.into(),
-        subroutines
+        subroutines,
     })
 }
 
@@ -282,17 +279,17 @@ impl From<Addr> for BasicBlockId {
 #[derive(Debug)]
 pub struct BasicBlock {
     insts: Vec<Instruction>,
-    terminator: Terminator
+    terminator: Terminator,
 }
 
 #[derive(Debug)]
 pub struct Routine {
     entry: BasicBlockId,
-    bbs: HashMap<BasicBlockId, BasicBlock>
+    bbs: HashMap<BasicBlockId, BasicBlock>,
 }
 
 #[derive(Debug)]
 pub struct CFG {
     start: Routine,
-    subroutines: HashMap<RoutineId, Routine>
+    subroutines: HashMap<RoutineId, Routine>,
 }
