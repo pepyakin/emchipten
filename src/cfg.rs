@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::path::Path;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use instruction::*;
@@ -132,7 +130,7 @@ impl<'a> SubroutineBuilder<'a> {
                 Jump(addr) => {
                     let jump_pc: usize = (addr.0 - 0x200) as usize;
                     self.seal_bb(leader, pc, Terminator::Jump { target: jump_pc });
-                    self.build_bb(seen_calls, jump_pc);
+                    self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
                 SkipPressed { .. } |
@@ -144,8 +142,8 @@ impl<'a> SubroutineBuilder<'a> {
                     self.seal_bb(leader, pc, Terminator::Skip { next, skip });
 
                     // First we do 'skip', then 'next'.
-                    self.build_bb(seen_calls, next);
-                    self.build_bb(seen_calls, skip);
+                    self.build_bb(seen_calls, next)?;
+                    self.build_bb(seen_calls, skip)?;
                     break;
                 }
                 _ => {}

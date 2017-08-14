@@ -49,20 +49,8 @@ pub struct Addr(pub u16); // TODO: Only & 0x0FFF
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Imm(pub u8);
 
-impl Imm {
-    fn encode_as_kk(self) -> u16 {
-        self.0 as u16
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Imm4(pub u8); // TODO: Only & 0x0F
-
-impl Imm4 {
-    fn encode_as_n(self) -> u16 {
-        self.0 as u16
-    }
-}
 
 enum_from_primitive! {
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -94,14 +82,6 @@ impl Reg {
 
     pub fn index(self) -> u8 {
         self as u8
-    }
-
-    fn encode_as_vx(self) -> u16 {
-        (self as u16) << 8
-    }
-
-    fn encode_as_vy(self) -> u16 {
-        (self as u16) << 4
     }
 }
 
@@ -331,50 +311,6 @@ impl Instruction {
             _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
         };
         Ok(insn)
-    }
-
-    pub fn encode(self) -> InstructionWord {
-        use self::Instruction::*;
-
-        let encoding: u16 = match self {
-            ClearScreen => 0x00E0,
-            Ret => 0x00EE,
-            Jump(addr) => 0x1000 | addr.0,
-            Call(addr) => 0x2000 | addr.0,
-            SkipEqImm { vx, imm, inv } => {
-                let opcode = if !inv { 0x3000 } else { 0x4000 };
-                opcode | vx.encode_as_vx() | imm.encode_as_kk()
-            }
-            SkipEqReg { vx, vy, inv } => {
-                let opcode = if !inv { 0x5000 } else { 0x9000 };
-                opcode | vx.encode_as_vx() | vy.encode_as_vy()
-            }
-            PutImm { vx, imm } => 0x6000 | vx.encode_as_vx() | imm.encode_as_kk(),
-            AddImm { vx, imm } => 0x7000 | vx.encode_as_vx() | imm.encode_as_kk(),
-            Apply { vx, vy, f } => {
-                let fun_op = f as u16;
-                0x8000 | vx.encode_as_vx() | vy.encode_as_vy() | fun_op
-            }
-            SetI(addr) => 0xA000 | addr.0,
-            JumpPlusV0(addr) => 0xB000 | addr.0,
-            Randomize { vx, imm } => 0xC000 | vx.encode_as_vx() | imm.encode_as_kk(),
-            Draw { vx, vy, n } => 0xD000 | vx.encode_as_vx() | vy.encode_as_vy() | n.encode_as_n(),
-            SkipPressed { vx, inv } => {
-                let sub_op = if !inv { 0x009E } else { 0x00A1 };
-                0xE000 | vx.encode_as_vx() | sub_op
-            }
-            GetDT(vx) => 0xF000 | vx.encode_as_vx() | 0x0007,
-            WaitKey(vx) => 0xF000 | vx.encode_as_vx() | 0x000A,
-            SetDT(vx) => 0xF000 | vx.encode_as_vx() | 0x0015,
-            SetST(vx) => 0xF000 | vx.encode_as_vx() | 0x0018,
-            AddI(vx) => 0xF000 | vx.encode_as_vx() | 0x001E,
-            LoadGlyph(vx) => 0xF000 | vx.encode_as_vx() | 0x0029,
-            StoreBCD(vx) => 0xF000 | vx.encode_as_vx() | 0x0033,
-            StoreRegs(vx) => 0xF000 | vx.encode_as_vx() | 0x0055,
-            LoadRegs(vx) => 0xF000 | vx.encode_as_vx() | 0x0065,
-            _ => unimplemented!(),  
-        };
-        InstructionWord(encoding)
     }
 }
 

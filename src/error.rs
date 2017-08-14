@@ -1,5 +1,4 @@
 use instruction;
-use std;
 use std::io;
 
 error_chain! {

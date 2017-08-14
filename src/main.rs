@@ -13,8 +13,6 @@ pub use error::*;
 
 use std::fs::File;
 use std::path::Path;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use instruction::*;
 
 fn build_cfg(rom: &[u8]) -> Result<cfg::CFGBuilder> {
@@ -33,12 +31,11 @@ fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
 }
 
 fn main() {
-    use std::io::Read;
     use std::env::args;
 
     let filename = args().nth(1).unwrap();
 
-    let mut rom_buffer = read_rom(filename).unwrap();
+    let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
     let module = build_cfg(&rom_buffer).unwrap();
     module.print();
