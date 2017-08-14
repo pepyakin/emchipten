@@ -3,23 +3,12 @@ use std::collections::HashSet;
 use instruction::*;
 use error::*;
 
-#[derive(Clone, Debug)]
-enum Terminator {
-    Ret,
-    Fallthrough { target: usize },
-    Jump { target: usize },
-    Skip { next: usize, skip: usize },
-}
+fn decode_instruction(rom: &[u8], pc: usize) -> Result<Instruction> {
+    use byteorder::{ByteOrder, BigEndian};
+    let actual_pc = pc as usize;
+    let instruction_word = InstructionWord(BigEndian::read_u16(&rom[actual_pc..]));
 
-impl Terminator {
-    fn successors(&self) -> Vec<usize> {
-        match *self {
-            Terminator::Ret => vec![],
-            Terminator::Fallthrough { target } => vec![target],
-            Terminator::Jump { target } => vec![target],
-            Terminator::Skip { next, skip } => vec![next, skip],
-        }
-    }
+    Instruction::decode(instruction_word)
 }
 
 #[derive(Clone, Debug)]
@@ -45,6 +34,28 @@ struct SubroutineBuilder<'a> {
     addr: usize,
     root: bool,
     bbs: Vec<BB>,
+}
+
+impl<'a> From<SubroutineBuilder<'a>> for Routine {
+    fn from(builder: SubroutineBuilder<'a>) -> Routine {
+        let mut bbs = HashMap::new();
+        for bb in builder.bbs {
+            let mut insts = Vec::new();
+            for pc in (bb.start..bb.end).step_by(2) {
+                let inst = decode_instruction(builder.rom, pc).unwrap();
+                insts.push(inst);
+            }
+
+            let basic_block = BasicBlock {
+                insts,
+                terminator: bb.terminator
+            };
+            bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
+        }
+        Routine {
+            bbs
+        }
+    }
 }
 
 impl<'a> SubroutineBuilder<'a> {
@@ -105,13 +116,7 @@ impl<'a> SubroutineBuilder<'a> {
             if pc >= self.rom.len() {
                 panic!("unimplemented");
             }
-
-            let instruction_word = {
-                use byteorder::{ByteOrder, BigEndian};
-                let actual_pc = pc as usize;
-                InstructionWord(BigEndian::read_u16(&self.rom[actual_pc..]))
-            };
-            let instruction = Instruction::decode(instruction_word)?;
+            let instruction = decode_instruction(self.rom, pc)?;
 
             println!("pc={}, {:?}", pc, instruction);
 
@@ -170,12 +175,7 @@ impl<'a> SubroutineBuilder<'a> {
                 break;
             }
 
-            let instruction_word = {
-                use byteorder::{ByteOrder, BigEndian};
-                let actual_pc = pc as usize;
-                InstructionWord(BigEndian::read_u16(&self.rom[actual_pc..]))
-            };
-            let instruction = Instruction::decode(instruction_word).unwrap();
+            let instruction = decode_instruction(self.rom, pc).unwrap();
 
             println!("  {}: {:?}", pc, instruction);
             pc += 2;
@@ -201,24 +201,21 @@ impl<'a> SubroutineBuilder<'a> {
 
 pub struct CFGBuilder<'a> {
     rom: &'a [u8],
-    start: Option<SubroutineBuilder<'a>>,
-    subs: HashMap<Addr, SubroutineBuilder<'a>>,
 }
 
 impl<'a> CFGBuilder<'a> {
     pub fn new(rom: &'a [u8]) -> CFGBuilder<'a> {
         CFGBuilder {
             rom,
-            start: None,
-            subs: HashMap::new(),
         }
     }
 
-    pub fn build_cfg(&mut self) -> Result<()> {
+    pub fn build_cfg(&mut self) -> Result<CFG> {
         let mut sub_builder = SubroutineBuilder::new(self.rom, 0);
         let mut seen_calls = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls)?;
-        self.start = Some(sub_builder);
+        let start = sub_builder;
+        let mut subs = HashMap::new();
 
         let mut subroutine_stack = Vec::new();
         for seen_call in seen_calls.iter().cloned() {
@@ -235,7 +232,7 @@ impl<'a> CFGBuilder<'a> {
                 SubroutineBuilder::new(self.rom, (subroutine_addr.0 - 0x200) as usize);
             let mut seen_calls_from_sr = HashSet::new();
             sub_builder.build_cfg(&mut seen_calls_from_sr)?;
-            self.subs.insert(subroutine_addr, sub_builder);
+            subs.insert(subroutine_addr.into(), sub_builder);
 
             for seen in seen_calls.difference(&seen_calls_from_sr).cloned() {
                 subroutine_stack.push(seen);
@@ -247,18 +244,65 @@ impl<'a> CFGBuilder<'a> {
                 .collect();
         }
 
-        Ok(())
-    }
+        let subroutines = subs.into_iter().map(|(k, v)| { (k, v.into()) }).collect();
 
-    pub fn print(&self) {
-        if let Some(ref start_sub_builder) = self.start {
-            println!("start:");
-            start_sub_builder.print();
-        }
+        Ok(CFG {
+            start: start.into(),
+            subroutines
+        })
+    }
+}
 
-        for (index, sub) in self.subs.values().enumerate() {
-            println!("subroutine {}:", index);
-            sub.print();
+#[derive(Clone, Debug)]
+pub enum Terminator {
+    Ret,
+    Fallthrough { target: usize },
+    Jump { target: usize },
+    Skip { next: usize, skip: usize },
+}
+
+impl Terminator {
+    pub fn successors(&self) -> Vec<usize> {
+        match *self {
+            Terminator::Ret => vec![],
+            Terminator::Fallthrough { target } => vec![target],
+            Terminator::Jump { target } => vec![target],
+            Terminator::Skip { next, skip } => vec![next, skip],
         }
     }
+}
+
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
+pub struct BasicBlockId(Addr);
+
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
+pub struct RoutineId(Addr);
+
+impl From<Addr> for RoutineId {
+    fn from(addr: Addr) -> RoutineId {
+        RoutineId(addr)
+    }
+}
+
+impl From<Addr> for BasicBlockId {
+    fn from(addr: Addr) -> BasicBlockId {
+        BasicBlockId(addr)
+    }
+}
+
+#[derive(Debug)]
+pub struct BasicBlock {
+    insts: Vec<Instruction>,
+    terminator: Terminator
+}
+
+#[derive(Debug)]
+pub struct Routine {
+    bbs: HashMap<BasicBlockId, BasicBlock>
+}
+
+#[derive(Debug)]
+pub struct CFG {
+    start: Routine,
+    subroutines: HashMap<RoutineId, Routine>
 }

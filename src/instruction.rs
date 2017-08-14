@@ -43,7 +43,7 @@ impl InstructionWord {
     }
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Addr(pub u16); // TODO: Only & 0x0FFF
 
 #[derive(Debug, Copy, Clone, PartialEq)]

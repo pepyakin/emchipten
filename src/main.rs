@@ -1,3 +1,5 @@
+#![feature(iterator_step_by, inclusive_range_syntax)]
+
 extern crate byteorder;
 #[macro_use]
 extern crate enum_primitive;
@@ -15,10 +17,9 @@ use std::fs::File;
 use std::path::Path;
 use instruction::*;
 
-fn build_cfg(rom: &[u8]) -> Result<cfg::CFGBuilder> {
+fn build_cfg(rom: &[u8]) -> Result<cfg::CFG> {
     let mut builder = cfg::CFGBuilder::new(rom);
-    builder.build_cfg()?;
-    Ok(builder)
+    builder.build_cfg()
 }
 
 fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
@@ -38,5 +39,6 @@ fn main() {
     let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
     let module = build_cfg(&rom_buffer).unwrap();
-    module.print();
+    println!("{:#?}", module);
+    // module.print();
 }
