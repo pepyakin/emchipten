@@ -35,5 +35,5 @@ fn main() {
     println!("{:?}", rom_buffer);
     let module = cfg::build_cfg(&rom_buffer).unwrap();
     println!("{:#?}", module);
-    // module.print();
+    module.print();
 }

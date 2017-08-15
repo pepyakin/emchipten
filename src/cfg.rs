@@ -118,7 +118,7 @@ impl<'a> SubroutineBuilder<'a> {
                     bb.start,
                     pc - 2,
                     Terminator::Fallthrough {
-                        target: falltrough_addr,
+                        target: BasicBlockId(Addr(falltrough_addr as u16)),
                     },
                 ));
                 self.bbs.push(BB::new(pc, bb.end, bb.terminator));
@@ -147,7 +147,7 @@ impl<'a> SubroutineBuilder<'a> {
                 }
                 Jump(addr) => {
                     let jump_pc: usize = (addr.0 - 0x200) as usize;
-                    self.seal_bb(leader, pc, Terminator::Jump { target: jump_pc });
+                    self.seal_bb(leader, pc, Terminator::Jump { target: BasicBlockId(Addr(jump_pc as u16)) });
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
@@ -155,7 +155,7 @@ impl<'a> SubroutineBuilder<'a> {
                     let next = pc + 2;
                     let skip = pc + 4;
 
-                    self.seal_bb(leader, pc, Terminator::Skip { next, skip });
+                    self.seal_bb(leader, pc, Terminator::Skip { next: BasicBlockId(Addr(next as u16)), skip: BasicBlockId(Addr(skip as u16)) });
 
                     // First we do 'skip', then 'next'.
                     self.build_bb(seen_calls, next)?;
@@ -175,38 +175,6 @@ impl<'a> SubroutineBuilder<'a> {
         let start_from = self.addr;
         self.build_bb(seen_calls, start_from)?;
         Ok(())
-    }
-
-    fn print_bb(&self, printed: &mut HashSet<usize>, addr: usize) {
-        println!("bb{}:", addr);
-        let bb = self.bbs.iter().find(|ref bb| bb.start == addr).unwrap();
-        let mut pc = bb.start;
-        loop {
-            if pc > bb.end {
-                break;
-            }
-
-            let instruction = self.rom.decode_instruction(pc).unwrap();
-
-            println!("  {}: {:?}", pc, instruction);
-            pc += 2;
-        }
-
-        printed.insert(addr);
-
-        let terminator = &bb.terminator;
-        println!("terminator: {:?}", terminator);
-
-        for successor_addr in terminator.successors() {
-            if !printed.contains(&successor_addr) {
-                self.print_bb(printed, successor_addr);
-            }
-        }
-    }
-
-    fn print(&self) {
-        let mut printed = HashSet::new();
-        self.print_bb(&mut printed, self.addr);
     }
 }
 
@@ -255,13 +223,13 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
 #[derive(Clone, Debug)]
 pub enum Terminator {
     Ret,
-    Fallthrough { target: usize },
-    Jump { target: usize },
-    Skip { next: usize, skip: usize },
+    Fallthrough { target: BasicBlockId },
+    Jump { target: BasicBlockId },
+    Skip { next: BasicBlockId, skip: BasicBlockId },
 }
 
 impl Terminator {
-    pub fn successors(&self) -> Vec<usize> {
+    pub fn successors(&self) -> Vec<BasicBlockId> {
         match *self {
             Terminator::Ret => vec![],
             Terminator::Fallthrough { target } => vec![target],
@@ -305,4 +273,36 @@ pub struct Routine {
 pub struct CFG {
     start: Routine,
     subroutines: HashMap<RoutineId, Routine>,
+}
+
+impl CFG {
+
+    fn print_bb(&self, routine: &Routine, bb_id: BasicBlockId, seen_bbs: &mut HashSet<BasicBlockId>) {
+        println!("bb{:?}:", (bb_id.0).0);
+        let bb = &routine.bbs[&bb_id];
+        for inst in &bb.insts {
+            println!("  {:?}", inst);
+        }
+        println!("  terminator: {:?}", bb.terminator);
+
+        seen_bbs.insert(bb_id);
+
+        for successor_bb in bb.terminator.successors() {
+            if !seen_bbs.contains(&successor_bb) {
+                self.print_bb(routine, successor_bb, seen_bbs);
+            }
+        }
+    }
+
+    fn print_routine(&self, routine: &Routine) {
+        let mut seen_bbs = HashSet::new();
+        self.print_bb(routine, routine.entry, &mut seen_bbs);
+    }
+
+    pub fn print(&self) {
+        self.print_routine(&self.start);
+        for subroutine in self.subroutines.values() {
+            self.print_routine(subroutine);
+        }
+    }
 }
