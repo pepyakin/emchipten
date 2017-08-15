@@ -7,7 +7,7 @@ authors = ["Sergey Pepyakin <s.pepyakin@gmail.com>"]
 byteorder = "0.5"
 enum_primitive = "*"
 error-chain = "0.10.0"
-binaryen = { path = "..", version = "0.1.0" }
+binaryen = { path = "../binaryen-rs", version = "0.1.0" }
 
 [profile.dev]
 panic="abort"
