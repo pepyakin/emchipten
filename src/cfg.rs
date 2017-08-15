@@ -3,12 +3,27 @@ use std::collections::HashSet;
 use instruction::*;
 use error::*;
 
-fn decode_instruction(rom: &[u8], pc: usize) -> Result<Instruction> {
-    use byteorder::{ByteOrder, BigEndian};
-    let actual_pc = pc as usize;
-    let instruction_word = InstructionWord(BigEndian::read_u16(&rom[actual_pc..]));
+struct Rom<'a> {
+    rom: &'a [u8],
+}
 
-    Instruction::decode(instruction_word)
+impl<'a> Rom<'a> {
+    fn new(rom: &[u8]) -> Rom {
+        Rom { rom }
+    }
+
+    fn decode_instruction(&self, pc: usize) -> Result<Instruction> {
+        use byteorder::{BigEndian, ByteOrder};
+
+        if pc >= self.rom.len() {
+            panic!("unimplemented");
+        }
+
+        let actual_pc = pc as usize;
+        let instruction_word = InstructionWord(BigEndian::read_u16(&self.rom[actual_pc..]));
+
+        Instruction::decode(instruction_word)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -30,7 +45,7 @@ impl BB {
 }
 
 struct SubroutineBuilder<'a> {
-    rom: &'a [u8],
+    rom: Rom<'a>,
     addr: usize,
     root: bool,
     bbs: Vec<BB>,
@@ -42,7 +57,7 @@ impl<'a> From<SubroutineBuilder<'a>> for Routine {
         for bb in builder.bbs {
             let mut insts = Vec::new();
             for pc in (bb.start..bb.end).step_by(2) {
-                let inst = decode_instruction(builder.rom, pc).unwrap();
+                let inst = builder.rom.decode_instruction(pc).unwrap();
                 insts.push(inst);
             }
 
@@ -60,7 +75,7 @@ impl<'a> From<SubroutineBuilder<'a>> for Routine {
 }
 
 impl<'a> SubroutineBuilder<'a> {
-    fn new(rom: &'a [u8], addr: usize) -> SubroutineBuilder<'a> {
+    fn new(rom: Rom<'a>, addr: usize) -> SubroutineBuilder<'a> {
         SubroutineBuilder {
             rom,
             addr,
@@ -102,7 +117,9 @@ impl<'a> SubroutineBuilder<'a> {
                 self.bbs.push(BB::new(
                     bb.start,
                     pc - 2,
-                    Terminator::Fallthrough { target: falltrough_addr },
+                    Terminator::Fallthrough {
+                        target: falltrough_addr,
+                    },
                 ));
                 self.bbs.push(BB::new(pc, bb.end, bb.terminator));
                 return Ok(());
@@ -112,10 +129,7 @@ impl<'a> SubroutineBuilder<'a> {
 
         let leader = pc;
         loop {
-            if pc >= self.rom.len() {
-                panic!("unimplemented");
-            }
-            let instruction = decode_instruction(self.rom, pc)?;
+            let instruction = self.rom.decode_instruction(pc)?;
 
             println!("pc={}, {:?}", pc, instruction);
 
@@ -137,9 +151,7 @@ impl<'a> SubroutineBuilder<'a> {
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
-                SkipPressed { .. } |
-                SkipEqImm { .. } |
-                SkipEqReg { .. } => {
+                SkipPressed { .. } | SkipEqImm { .. } | SkipEqReg { .. } => {
                     let next = pc + 2;
                     let skip = pc + 4;
 
@@ -174,7 +186,7 @@ impl<'a> SubroutineBuilder<'a> {
                 break;
             }
 
-            let instruction = decode_instruction(self.rom, pc).unwrap();
+            let instruction = self.rom.decode_instruction(pc).unwrap();
 
             println!("  {}: {:?}", pc, instruction);
             pc += 2;
@@ -199,7 +211,7 @@ impl<'a> SubroutineBuilder<'a> {
 }
 
 pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
-    let mut sub_builder = SubroutineBuilder::new(rom, 0);
+    let mut sub_builder = SubroutineBuilder::new(Rom::new(rom), 0);
     let mut seen_calls = HashSet::new();
     sub_builder.build_cfg(&mut seen_calls)?;
     let start = sub_builder;
@@ -216,7 +228,8 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             None => break,
         };
 
-        let mut sub_builder = SubroutineBuilder::new(rom, (subroutine_addr.0 - 0x200) as usize);
+        let mut sub_builder =
+            SubroutineBuilder::new(Rom::new(rom), (subroutine_addr.0 - 0x200) as usize);
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
         subs.insert(subroutine_addr.into(), sub_builder);
