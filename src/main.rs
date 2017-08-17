@@ -91,9 +91,12 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
             let bb = &self.routine.bbs[&bb_id];
 
             use cfg::Terminator::*;
-            // match bb.terminator() {
+            let code = match bb.terminator() {
+                Ret => unsafe {
+                    ffi::BinaryenReturn(self.ctx.module, std::ptr::null_mut())
+                }
                 
-            // }
+            }
         }
     }
 
@@ -101,6 +104,7 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
         // let bb = &ctx.routine.bbs[&bb_id];
 
         let relooper_block = unsafe {
+            // TODO: Do actual translation.
             let code = ffi::BinaryenNop(self.ctx.module);
             ffi::RelooperAddBlock(self.relooper, code)
         };
@@ -110,11 +114,21 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
     unsafe fn trans_inst(&mut self, instruction: Instruction) -> ffi::BinaryenExpressionRef {
         use std::ptr;
         match instruction {
-            Instruction::Ret => ffi::BinaryenReturn(self.ctx.module, ptr::null_mut()),
-            Instruction::SkipEqImm { vx, imm, inv } => {
-                panic!()
-            }
+            
             _ => panic!()
+        }
+    }
+
+    fn trans_cond(&mut self, cond: Cond) -> ffi::BinaryenExpressionRef {
+        let lhs = self.load_reg(cond.vx);
+        let rhs = match cond.rhs {
+            CondRhs::Reg(vy) => self.load_reg(vy),
+            CondRhs::Imm(imm) => self.load_const_i32(imm.0 as u32),
+            CondRhs::Pressed => panic!("TODO")
+        };
+        
+        unsafe {
+            ffi::BinaryenBinary(self.ctx.module, ffi::BinaryenEqInt32(), lhs, rhs)
         }
     }
 

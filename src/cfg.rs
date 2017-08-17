@@ -27,7 +27,7 @@ impl<'a> Rom<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct BB {
     start: usize,
     end: usize,
@@ -52,27 +52,6 @@ struct SubroutineBuilder<'a> {
     bbs: Vec<BB>,
 }
 
-impl<'a> From<SubroutineBuilder<'a>> for Routine {
-    fn from(builder: SubroutineBuilder<'a>) -> Routine {
-        let mut bbs = HashMap::new();
-        for bb in builder.bbs {
-            let mut insts = Vec::new();
-            for pc in (bb.start..bb.end).step_by(2) {
-                // TODO: Try?
-                let inst = builder.rom.decode_instruction(pc).unwrap();
-                insts.push(inst);
-            }
-
-            let basic_block = BasicBlock::new(insts, bb.terminator);
-            bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
-        }
-        Routine {
-            entry: BasicBlockId(Addr(builder.addr as u16)),
-            bbs,
-        }
-    }
-}
-
 impl<'a> SubroutineBuilder<'a> {
     fn new(rom: Rom<'a>, addr: usize) -> SubroutineBuilder<'a> {
         SubroutineBuilder {
@@ -81,6 +60,33 @@ impl<'a> SubroutineBuilder<'a> {
             root: addr == 0,
             bbs: Vec::new(),
         }
+    }
+
+    fn into_routine(self) -> Routine {
+        let mut bbs = HashMap::new();
+        for bb in &self.bbs {
+            let mut insts = self.read_bb(*bb).unwrap();
+            
+            if let Some(last_instruction) = insts.pop() {
+                assert!(last_instruction.is_terminating());
+            }
+
+            let basic_block = BasicBlock::new(insts, bb.terminator);
+            bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
+        }
+        Routine {
+            entry: BasicBlockId(Addr(self.addr as u16)),
+            bbs,
+        }
+    }
+
+    fn read_bb(&self, bb: BB) -> Result<Vec<Instruction>> {
+        let mut insts = Vec::new();
+        for pc in (bb.start..bb.end).step_by(2) {
+            let inst = self.rom.decode_instruction(pc)?;
+            insts.push(inst);
+        }
+        Ok(insts)
     }
 
     fn seal_bb(&mut self, leader: usize, pc: usize, terminator: Terminator) {
@@ -158,9 +164,7 @@ impl<'a> SubroutineBuilder<'a> {
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
-                SkipPressed { .. } |
-                SkipEqImm { .. } |
-                SkipEqReg { .. } => {
+                Skip(cond) => {
                     let next = pc + 2;
                     let skip = pc + 4;
 
@@ -168,6 +172,7 @@ impl<'a> SubroutineBuilder<'a> {
                         leader,
                         pc,
                         Terminator::Skip {
+                            cond,
                             next: BasicBlockId(Addr(next as u16)),
                             skip: BasicBlockId(Addr(skip as u16)),
                         },
@@ -228,10 +233,10 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             .collect();
     }
 
-    let subroutines = subs.into_iter().map(|(k, v)| (k, v.into())).collect();
+    let subroutines = subs.into_iter().map(|(k, v)| (k, v.into_routine())).collect();
 
     Ok(CFG {
-        start: start.into(),
+        start: start.into_routine(),
         subroutines,
     })
 }
@@ -241,6 +246,7 @@ pub enum Terminator {
     Ret,
     Jump { target: BasicBlockId },
     Skip {
+        cond: Cond,
         next: BasicBlockId,
         skip: BasicBlockId,
     },
@@ -251,7 +257,7 @@ impl Terminator {
         match *self {
             Terminator::Ret => vec![],
             Terminator::Jump { target } => vec![target],
-            Terminator::Skip { next, skip } => vec![next, skip],
+            Terminator::Skip { next, skip, .. } => vec![next, skip],
         }
     }
 }
@@ -280,9 +286,20 @@ pub struct BasicBlock {
     terminator: Terminator,
 }
 
+impl Instruction {
+    pub fn is_terminating(&self) -> bool {
+        use self::Instruction::*;
+
+        match *self {
+            Ret | Jump(..) | Skip(..) | JumpPlusV0(..) => true,
+            _ => false
+        }
+    }
+}
+
 impl BasicBlock {
     fn new(insts: Vec<Instruction>, terminator: Terminator) -> BasicBlock {
-        assert!(!insts.len() >= 1);
+        assert!(!insts.iter().any(|x| x.is_terminating()));
         BasicBlock { insts, terminator }
     }
 

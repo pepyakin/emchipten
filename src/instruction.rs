@@ -117,6 +117,26 @@ pub enum Fun {
 }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Cmp {
+    Eq,
+    Ne
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum CondRhs {
+    Imm(Imm),
+    Reg(Reg),
+    Pressed
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Cond {
+    pub vx: Reg,
+    pub cmp: Cmp,
+    pub rhs: CondRhs,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
     /// 00E0 - CLS
@@ -136,11 +156,11 @@ pub enum Instruction {
 
     /// 3xkk - SE Vx, byte
     /// 4xkk - SNE Vx, byte
-    SkipEqImm { vx: Reg, imm: Imm, inv: bool },
-
     /// 5xy0 - SE Vx, Vy
     /// 9xy0 - SNE Vx, Vy
-    SkipEqReg { vx: Reg, vy: Reg, inv: bool },
+    /// Ex9E - SKP Vx
+    /// ExA1 - SKNP Vx
+    Skip(Cond),
 
     /// 6xkk - LD Vx, byte
     PutImm { vx: Reg, imm: Imm },
@@ -162,10 +182,6 @@ pub enum Instruction {
 
     /// Dxyn - DRW Vx, Vy, nibble
     Draw { vx: Reg, vy: Reg, n: Imm4 },
-
-    /// Ex9E - SKP Vx
-    /// ExA1 - SKNP Vx
-    SkipPressed { vx: Reg, inv: bool },
 
     /// Fx07 - LD Vx, DT
     GetDT(Reg),
@@ -210,32 +226,40 @@ impl Instruction {
             0x1 => Jump(iw.addr()),
             0x2 => Call(iw.addr()),
             0x3 => {
-                SkipEqImm {
-                    vx: iw.x_reg(),
-                    imm: iw.imm(),
-                    inv: false,
-                }
+                Skip(
+                    Cond {
+                        vx: iw.x_reg(),
+                        cmp: Cmp::Eq,
+                        rhs: CondRhs::Imm(iw.imm()),
+                    }
+                )
             }
             0x4 => {
-                SkipEqImm {
-                    vx: iw.x_reg(),
-                    imm: iw.imm(),
-                    inv: true,
-                }
+                Skip(
+                    Cond {
+                        vx: iw.x_reg(),
+                        cmp: Cmp::Ne,
+                        rhs: CondRhs::Imm(iw.imm()),
+                    }
+                )
             }
             0x5 => {
-                SkipEqReg {
-                    vx: iw.x_reg(),
-                    vy: iw.y_reg(),
-                    inv: false,
-                }
+                Skip(
+                    Cond {
+                        vx: iw.x_reg(),
+                        cmp: Cmp::Eq,
+                        rhs: CondRhs::Reg(iw.y_reg()),
+                    }                  
+                )
             }
             0x9 => {
-                SkipEqReg {
-                    vx: iw.x_reg(),
-                    vy: iw.y_reg(),
-                    inv: true,
-                }
+                Skip(
+                    Cond {
+                        vx: iw.x_reg(),
+                        cmp: Cmp::Ne,
+                        rhs: CondRhs::Reg(iw.y_reg()),
+                    }
+                )
             }
             0x6 => {
                 PutImm {
@@ -280,16 +304,21 @@ impl Instruction {
             0xE => {
                 match iw.kk() {
                     0x9E => {
-                        SkipPressed {
-                            vx: iw.x_reg(),
-                            inv: false,
-                        }
+                        Skip(
+                            Cond {
+                                vx: iw.x_reg(),
+                                cmp: Cmp::Eq,
+                                rhs: CondRhs::Pressed,
+                            }
+                        )
                     }
                     0xA1 => {
-                        SkipPressed {
+                        Skip(Cond {
                             vx: iw.x_reg(),
-                            inv: true,
+                            cmp: Cmp::Ne,
+                            rhs: CondRhs::Pressed,
                         }
+                        )
                     }
                     _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
                 }
