@@ -16,6 +16,7 @@ impl<'a> Rom<'a> {
         use byteorder::{BigEndian, ByteOrder};
 
         if pc >= self.rom.len() {
+            // TODO: handle this
             panic!("unimplemented");
         }
 
@@ -57,14 +58,12 @@ impl<'a> From<SubroutineBuilder<'a>> for Routine {
         for bb in builder.bbs {
             let mut insts = Vec::new();
             for pc in (bb.start..bb.end).step_by(2) {
+                // TODO: Try?
                 let inst = builder.rom.decode_instruction(pc).unwrap();
                 insts.push(inst);
             }
 
-            let basic_block = BasicBlock {
-                insts,
-                terminator: bb.terminator,
-            };
+            let basic_block = BasicBlock::new(insts, bb.terminator);
             bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
         }
         Routine {
@@ -103,7 +102,11 @@ impl<'a> SubroutineBuilder<'a> {
         println!("{:?}", self.bbs);
         match self.find_bb(pc) {
             Some(bb_position) => {
-                if self.bbs.get(bb_position).unwrap().start == pc {
+                if self.bbs
+                    .get(bb_position)
+                    .expect("we found it already")
+                    .start == pc
+                {
                     println!("there is {} already", pc);
                     return Ok(());
                 }
@@ -117,7 +120,7 @@ impl<'a> SubroutineBuilder<'a> {
                 self.bbs.push(BB::new(
                     bb.start,
                     pc - 2,
-                    Terminator::Fallthrough {
+                    Terminator::Jump {
                         target: BasicBlockId(Addr(falltrough_addr as u16)),
                     },
                 ));
@@ -147,15 +150,28 @@ impl<'a> SubroutineBuilder<'a> {
                 }
                 Jump(addr) => {
                     let jump_pc: usize = (addr.0 - 0x200) as usize;
-                    self.seal_bb(leader, pc, Terminator::Jump { target: BasicBlockId(Addr(jump_pc as u16)) });
+                    self.seal_bb(
+                        leader,
+                        pc,
+                        Terminator::Jump { target: BasicBlockId(Addr(jump_pc as u16)) },
+                    );
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
-                SkipPressed { .. } | SkipEqImm { .. } | SkipEqReg { .. } => {
+                SkipPressed { .. } |
+                SkipEqImm { .. } |
+                SkipEqReg { .. } => {
                     let next = pc + 2;
                     let skip = pc + 4;
 
-                    self.seal_bb(leader, pc, Terminator::Skip { next: BasicBlockId(Addr(next as u16)), skip: BasicBlockId(Addr(skip as u16)) });
+                    self.seal_bb(
+                        leader,
+                        pc,
+                        Terminator::Skip {
+                            next: BasicBlockId(Addr(next as u16)),
+                            skip: BasicBlockId(Addr(skip as u16)),
+                        },
+                    );
 
                     // First we do 'skip', then 'next'.
                     self.build_bb(seen_calls, next)?;
@@ -220,19 +236,20 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
     })
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Terminator {
     Ret,
-    Fallthrough { target: BasicBlockId },
     Jump { target: BasicBlockId },
-    Skip { next: BasicBlockId, skip: BasicBlockId },
+    Skip {
+        next: BasicBlockId,
+        skip: BasicBlockId,
+    },
 }
 
 impl Terminator {
     pub fn successors(&self) -> Vec<BasicBlockId> {
         match *self {
             Terminator::Ret => vec![],
-            Terminator::Fallthrough { target } => vec![target],
             Terminator::Jump { target } => vec![target],
             Terminator::Skip { next, skip } => vec![next, skip],
         }
@@ -263,10 +280,21 @@ pub struct BasicBlock {
     terminator: Terminator,
 }
 
+impl BasicBlock {
+    fn new(insts: Vec<Instruction>, terminator: Terminator) -> BasicBlock {
+        assert!(!insts.len() >= 1);
+        BasicBlock { insts, terminator }
+    }
+
+    pub fn terminator(&self) -> Terminator {
+        self.terminator
+    }
+}
+
 #[derive(Debug)]
 pub struct Routine {
-    entry: BasicBlockId,
-    bbs: HashMap<BasicBlockId, BasicBlock>,
+    pub entry: BasicBlockId,
+    pub bbs: HashMap<BasicBlockId, BasicBlock>,
 }
 
 #[derive(Debug)]
@@ -276,8 +304,16 @@ pub struct CFG {
 }
 
 impl CFG {
+    pub fn start(&self) -> &Routine {
+        &self.start
+    }
 
-    fn print_bb(&self, routine: &Routine, bb_id: BasicBlockId, seen_bbs: &mut HashSet<BasicBlockId>) {
+    fn print_bb(
+        &self,
+        routine: &Routine,
+        bb_id: BasicBlockId,
+        seen_bbs: &mut HashSet<BasicBlockId>,
+    ) {
         println!("bb{:?}:", (bb_id.0).0);
         let bb = &routine.bbs[&bb_id];
         for inst in &bb.insts {
