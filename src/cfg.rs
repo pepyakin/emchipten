@@ -303,6 +303,10 @@ impl BasicBlock {
         BasicBlock { insts, terminator }
     }
 
+    pub fn instructions(&self) -> &[Instruction] {
+        &self.insts
+    }
+
     pub fn terminator(&self) -> Terminator {
         self.terminator
     }

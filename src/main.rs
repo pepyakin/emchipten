@@ -14,6 +14,7 @@ mod cfg;
 pub use error::*;
 
 use std::fs::File;
+use std::ptr;
 use std::path::Path;
 use instruction::*;
 use binaryen::ffi;
@@ -90,30 +91,59 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
         for bb_id in self.routine.bbs.keys() {
             let bb = &self.routine.bbs[&bb_id];
 
+            let from_relooper_block = relooper_blocks[&bb_id];
+
             use cfg::Terminator::*;
-            let code = match bb.terminator() {
-                Ret => unsafe {
-                    ffi::BinaryenReturn(self.ctx.module, std::ptr::null_mut())
+            match bb.terminator() {
+                Ret => {
+                    // Return should be added in trans_bb()
                 }
-                
+                Jump { target } => unsafe {
+                    let to_relooper_block = relooper_blocks[&target];
+                    ffi::RelooperAddBranch(from_relooper_block, to_relooper_block, ptr::null_mut(), ptr::null_mut());
+                }
+                Skip { cond, next, skip } => unsafe {
+                    let cond = self.trans_cond(cond);
+                    let skip_relooper_block = relooper_blocks[&skip];
+                    let next_relooper_block = relooper_blocks[&next];
+
+                    ffi::RelooperAddBranch(from_relooper_block, skip_relooper_block, cond, ptr::null_mut());
+                    ffi::RelooperAddBranch(from_relooper_block, next_relooper_block, ptr::null_mut(), ptr::null_mut());
+                }
             }
         }
     }
 
     fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> ffi::RelooperBlockRef {
-        // let bb = &ctx.routine.bbs[&bb_id];
+        let bb = &self.routine.bbs[&bb_id];
+
+        let mut stmts = Vec::new();
+
+        for inst in bb.instructions() {
+            unsafe { self.trans_instruction(inst, &mut stmts) };
+        }
+
+        if let cfg::Terminator::Ret = bb.terminator() {
+            unsafe {
+                stmts.push(ffi::BinaryenReturn(self.ctx.module, ptr::null_mut()));
+            }
+        }
 
         let relooper_block = unsafe {
-            // TODO: Do actual translation.
-            let code = ffi::BinaryenNop(self.ctx.module);
+            let code = ffi::BinaryenBlock(
+                self.ctx.module, 
+                ptr::null_mut(), stmts.as_ptr() as _, stmts.len() as _, ffi::BinaryenNone());
             ffi::RelooperAddBlock(self.relooper, code)
         };
         relooper_block
     }
 
-    unsafe fn trans_inst(&mut self, instruction: Instruction) -> ffi::BinaryenExpressionRef {
-        use std::ptr;
-        match instruction {
+    unsafe fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<ffi::BinaryenExpressionRef>) {
+        match *instruction {
+            Instruction::PutImm { vx, imm } => {
+                let imm_expr = self.load_const_i32(imm.0 as u32);
+                stmts.push(self.store_reg(vx, imm_expr));
+            }
             
             _ => panic!()
         }
@@ -133,10 +163,16 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
     }
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
-        // memory [v0, v1, .., vN]
         unsafe {
             let reg_ptr: u32 = reg.index().into();
             ffi::BinaryenLoad(self.ctx.module, 1, 0, 0, 0, ffi::BinaryenInt32(), self.load_const_i32(reg_ptr))
+        }
+    }
+
+    fn store_reg(&mut self, reg: Reg, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
+        unsafe {
+            let reg_ptr: u32 = reg.index().into();
+            ffi::BinaryenStore(self.ctx.module, 1, 0, 0, self.load_const_i32(reg_ptr), value, ffi::BinaryenInt32())
         }
     }
 
