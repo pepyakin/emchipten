@@ -100,16 +100,31 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
                 }
                 Jump { target } => unsafe {
                     let to_relooper_block = relooper_blocks[&target];
-                    ffi::RelooperAddBranch(from_relooper_block, to_relooper_block, ptr::null_mut(), ptr::null_mut());
+                    ffi::RelooperAddBranch(
+                        from_relooper_block,
+                        to_relooper_block,
+                        ptr::null_mut(),
+                        ptr::null_mut(),
+                    );
                 }
                 Skip { cond, next, skip } => unsafe {
                     let cond = self.trans_cond(cond);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
-                    ffi::RelooperAddBranch(from_relooper_block, skip_relooper_block, cond, ptr::null_mut());
-                    ffi::RelooperAddBranch(from_relooper_block, next_relooper_block, ptr::null_mut(), ptr::null_mut());
-                }
+                    ffi::RelooperAddBranch(
+                        from_relooper_block,
+                        skip_relooper_block,
+                        cond,
+                        ptr::null_mut(),
+                    );
+                    ffi::RelooperAddBranch(
+                        from_relooper_block,
+                        next_relooper_block,
+                        ptr::null_mut(),
+                        ptr::null_mut(),
+                    );
+                },
             }
         }
     }
@@ -131,21 +146,29 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
 
         let relooper_block = unsafe {
             let code = ffi::BinaryenBlock(
-                self.ctx.module, 
-                ptr::null_mut(), stmts.as_ptr() as _, stmts.len() as _, ffi::BinaryenNone());
+                self.ctx.module,
+                ptr::null_mut(),
+                stmts.as_ptr() as _,
+                stmts.len() as _,
+                ffi::BinaryenNone(),
+            );
             ffi::RelooperAddBlock(self.relooper, code)
         };
         relooper_block
     }
 
-    unsafe fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<ffi::BinaryenExpressionRef>) {
+    unsafe fn trans_instruction(
+        &mut self,
+        instruction: &Instruction,
+        stmts: &mut Vec<ffi::BinaryenExpressionRef>,
+    ) {
         match *instruction {
             Instruction::PutImm { vx, imm } => {
                 let imm_expr = self.load_const_i32(imm.0 as u32);
                 stmts.push(self.store_reg(vx, imm_expr));
             }
-            
-            _ => panic!()
+
+            _ => panic!(),
         }
     }
 
@@ -154,31 +177,47 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
         let rhs = match cond.rhs {
             CondRhs::Reg(vy) => self.load_reg(vy),
             CondRhs::Imm(imm) => self.load_const_i32(imm.0 as u32),
-            CondRhs::Pressed => panic!("TODO")
+            CondRhs::Pressed => panic!("TODO"),
         };
-        
-        unsafe {
-            ffi::BinaryenBinary(self.ctx.module, ffi::BinaryenEqInt32(), lhs, rhs)
-        }
+
+        unsafe { ffi::BinaryenBinary(self.ctx.module, ffi::BinaryenEqInt32(), lhs, rhs) }
     }
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_ptr: u32 = reg.index().into();
-            ffi::BinaryenLoad(self.ctx.module, 1, 0, 0, 0, ffi::BinaryenInt32(), self.load_const_i32(reg_ptr))
+            ffi::BinaryenLoad(
+                self.ctx.module,
+                1,
+                0,
+                0,
+                0,
+                ffi::BinaryenInt32(),
+                self.load_const_i32(reg_ptr),
+            )
         }
     }
 
-    fn store_reg(&mut self, reg: Reg, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
+    fn store_reg(
+        &mut self,
+        reg: Reg,
+        value: ffi::BinaryenExpressionRef,
+    ) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_ptr: u32 = reg.index().into();
-            ffi::BinaryenStore(self.ctx.module, 1, 0, 0, self.load_const_i32(reg_ptr), value, ffi::BinaryenInt32())
+            ffi::BinaryenStore(
+                self.ctx.module,
+                1,
+                0,
+                0,
+                self.load_const_i32(reg_ptr),
+                value,
+                ffi::BinaryenInt32(),
+            )
         }
     }
 
     fn load_const_i32(&mut self, c: u32) -> ffi::BinaryenExpressionRef {
-        unsafe {
-            ffi::BinaryenConst(self.ctx.module, ffi::BinaryenLiteralInt32(c as i32))
-        }
+        unsafe { ffi::BinaryenConst(self.ctx.module, ffi::BinaryenLiteralInt32(c as i32)) }
     }
 }

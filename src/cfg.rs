@@ -66,7 +66,7 @@ impl<'a> SubroutineBuilder<'a> {
         let mut bbs = HashMap::new();
         for bb in &self.bbs {
             let mut insts = self.read_bb(*bb).unwrap();
-            
+
             if let Some(last_instruction) = insts.pop() {
                 assert!(last_instruction.is_terminating());
             }
@@ -233,7 +233,9 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             .collect();
     }
 
-    let subroutines = subs.into_iter().map(|(k, v)| (k, v.into_routine())).collect();
+    let subroutines = subs.into_iter()
+        .map(|(k, v)| (k, v.into_routine()))
+        .collect();
 
     Ok(CFG {
         start: start.into_routine(),
@@ -292,7 +294,7 @@ impl Instruction {
 
         match *self {
             Ret | Jump(..) | Skip(..) | JumpPlusV0(..) => true,
-            _ => false
+            _ => false,
         }
     }
 }
