@@ -124,17 +124,16 @@ pub enum Cmp {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum CondRhs {
-    Imm(Imm),
-    Reg(Reg),
-    Pressed,
+pub enum Condition {
+    Imm(Reg, Imm),
+    Reg(Reg, Reg),
+    Pressed(Reg),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Cond {
-    pub vx: Reg,
+pub struct Predicate {
     pub cmp: Cmp,
-    pub rhs: CondRhs,
+    pub cond: Condition,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -160,7 +159,7 @@ pub enum Instruction {
     /// 9xy0 - SNE Vx, Vy
     /// Ex9E - SKP Vx
     /// ExA1 - SKNP Vx
-    Skip(Cond),
+    Skip(Predicate),
 
     /// 6xkk - LD Vx, byte
     PutImm { vx: Reg, imm: Imm },
@@ -226,31 +225,27 @@ impl Instruction {
             0x1 => Jump(iw.addr()),
             0x2 => Call(iw.addr()),
             0x3 => {
-                Skip(Cond {
-                    vx: iw.x_reg(),
+                Skip(Predicate {
                     cmp: Cmp::Eq,
-                    rhs: CondRhs::Imm(iw.imm()),
+                    cond: Condition::Imm(iw.x_reg(), iw.imm()),
                 })
             }
             0x4 => {
-                Skip(Cond {
-                    vx: iw.x_reg(),
+                Skip(Predicate {
                     cmp: Cmp::Ne,
-                    rhs: CondRhs::Imm(iw.imm()),
+                    cond: Condition::Imm(iw.x_reg(), iw.imm()),
                 })
             }
             0x5 => {
-                Skip(Cond {
-                    vx: iw.x_reg(),
+                Skip(Predicate {
                     cmp: Cmp::Eq,
-                    rhs: CondRhs::Reg(iw.y_reg()),
+                    cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
                 })
             }
             0x9 => {
-                Skip(Cond {
-                    vx: iw.x_reg(),
+                Skip(Predicate {
                     cmp: Cmp::Ne,
-                    rhs: CondRhs::Reg(iw.y_reg()),
+                    cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
                 })
             }
             0x6 => {
@@ -296,17 +291,15 @@ impl Instruction {
             0xE => {
                 match iw.kk() {
                     0x9E => {
-                        Skip(Cond {
-                            vx: iw.x_reg(),
+                        Skip(Predicate {
                             cmp: Cmp::Eq,
-                            rhs: CondRhs::Pressed,
+                            cond: Condition::Pressed(iw.x_reg()),
                         })
                     }
                     0xA1 => {
-                        Skip(Cond {
-                            vx: iw.x_reg(),
+                        Skip(Predicate {
                             cmp: Cmp::Ne,
-                            rhs: CondRhs::Pressed,
+                            cond: Condition::Pressed(iw.x_reg()),
                         })
                     }
                     _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),

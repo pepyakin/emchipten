@@ -114,15 +114,15 @@ impl<'t> RoutineTransCtx<'t> {
                         ptr::null_mut(),
                     );
                 },
-                Skip { cond, next, skip } => unsafe {
-                    let cond = self.trans_cond(cond);
+                Skip { predicate, next, skip } => unsafe {
+                    let predicate_expr = self.trans_predicate(predicate);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
                     ffi::RelooperAddBranch(
                         from_relooper_block,
                         skip_relooper_block,
-                        cond,
+                        predicate_expr,
                         ptr::null_mut(),
                     );
                     ffi::RelooperAddBranch(
@@ -501,15 +501,33 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn trans_cond(&mut self, cond: Cond) -> ffi::BinaryenExpressionRef {
-        let lhs = self.load_reg(cond.vx);
-        let rhs = match cond.rhs {
-            CondRhs::Reg(vy) => self.load_reg(vy),
-            CondRhs::Imm(imm) => self.load_imm(imm.0 as u32),
-            CondRhs::Pressed => panic!("TODO"),
+    fn trans_predicate(&mut self, predicate: Predicate) -> ffi::BinaryenExpressionRef {
+        let (lhs, rhs) = match predicate.cond {
+            Condition::Reg(vx, vy) => {
+                let vx_expr = self.load_reg(vx);
+                let vy_expr = self.load_reg(vy);
+                (vx_expr, vy_expr)
+            },
+            Condition::Imm(vx, imm) => {
+                let vx_expr = self.load_reg(vx);
+                let imm_expr = self.load_imm(imm.0 as _);
+                (vx_expr, imm_expr)
+            },
+            Condition::Pressed(vx) => {
+                let vx_expr = self.load_reg(vx);
+                let pressed_expr = unsafe {
+                    self.trans_call_import("is_key_pressed", vec![vx_expr], ffi::BinaryenInt32())
+                };
+                (pressed_expr, self.load_imm(1))
+            },
         };
-
-        unsafe { ffi::BinaryenBinary(self.module, ffi::BinaryenEqInt32(), lhs, rhs) }
+        unsafe { 
+            let cmp_op = match predicate.cmp {
+                Cmp::Eq => ffi::BinaryenEqInt32(),
+                Cmp::Ne => ffi::BinaryenNeInt32(),
+            };
+            ffi::BinaryenBinary(self.module, cmp_op, lhs, rhs) 
+        }
     }
 
     fn load_i(&mut self) -> ffi::BinaryenExpressionRef {

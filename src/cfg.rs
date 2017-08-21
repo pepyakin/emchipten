@@ -181,7 +181,7 @@ impl<'a> SubroutineBuilder<'a> {
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
                 }
-                Skip(cond) => {
+                Skip(predicate) => {
                     let next = pc + 2;
                     let skip = pc + 4;
 
@@ -190,7 +190,7 @@ impl<'a> SubroutineBuilder<'a> {
                         leader,
                         pc,
                         Terminator::Skip {
-                            cond,
+                            predicate,
                             next: BasicBlockId(Addr(next as u16)),
                             skip: BasicBlockId(Addr(skip as u16)),
                         },
@@ -268,7 +268,7 @@ pub enum Terminator {
     Ret,
     Jump { target: BasicBlockId },
     Skip {
-        cond: Cond,
+        predicate: Predicate,
         next: BasicBlockId,
         skip: BasicBlockId,
     },
