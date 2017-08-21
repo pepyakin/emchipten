@@ -141,6 +141,7 @@ impl<'t> RoutineTransCtx<'t> {
             // TODO: 0??
             let body_code =
                 ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, 0, self.module);
+            // println!("body:");
             // ffi::BinaryenExpressionPrint(body_code);
         }
     }
