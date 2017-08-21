@@ -46,10 +46,10 @@ impl InstructionWord {
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Addr(pub u16); // TODO: Only & 0x0FFF
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Imm(pub u8);
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Imm4(pub u8); // TODO: Only & 0x0F
 
 enum_from_primitive! {
@@ -86,7 +86,7 @@ impl Reg {
 }
 
 enum_from_primitive! {
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Fun {
     // 8xy0 - LD Vx, Vy
     Id = 0x0,
@@ -137,7 +137,7 @@ pub struct Cond {
     pub rhs: CondRhs,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Instruction {
     /// 00E0 - CLS
     ClearScreen,
