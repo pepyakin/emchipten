@@ -192,9 +192,11 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(self.store_reg(vx, add_expr));
             }
             Instruction::Randomize { vx, imm } => {
+                // TODO: Optimize
                 let random = CString::new("random").unwrap();
                 let random_name = random.as_ptr();
                 self.c_strings.push(random);
+
                 let rnd_expr = ffi::BinaryenCallImport(self.module, random_name, ptr::null_mut(), 0, ffi::BinaryenInt32());
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
                 let mask_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), rnd_expr, mask_imm_expr);
@@ -202,7 +204,21 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_expr);
             }
             Instruction::Draw { vx, vy, n } => {
-                stmts.push(ffi::BinaryenNop(self.module));
+                // TODO: Optimize
+                let draw = CString::new("draw").unwrap();
+                let draw_name = draw.as_ptr();
+                self.c_strings.push(draw);
+
+                let x_expr = self.load_reg(vx);
+                let y_expr = self.load_reg(vy);
+                let n_expr = self.load_imm(n.0 as u32);
+
+                let operands = vec![x_expr, y_expr, n_expr];
+
+                let draw_expr = ffi::BinaryenCallImport(self.module, draw_name, operands.as_ptr() as _, operands.len() as _, ffi::BinaryenInt32());
+                let store_expr = self.store_reg(Reg::Vf, draw_expr);
+
+                stmts.push(store_expr);
             }
             Instruction::SetI(addr) => {
                 let store_i_expr = self.store_i_imm(addr);
