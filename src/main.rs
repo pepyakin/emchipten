@@ -183,7 +183,8 @@ impl<'t> RoutineTransCtx<'t> {
     ) {
         match *instruction {
             Instruction::ClearScreen => {
-                let clear_expr = self.trans_call_import("clear_screen", vec![], ffi::BinaryenNone());
+                let clear_expr =
+                    self.trans_call_import("clear_screen", vec![], ffi::BinaryenNone());
                 stmts.push(clear_expr);
             }
             Instruction::PutImm { vx, imm } => {
@@ -196,6 +197,9 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr =
                     ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), load_expr, imm_expr);
                 stmts.push(self.store_reg(vx, add_expr));
+            }
+            Instruction::Apply { vx, vy, f } => {
+                self.trans_apply(vx, vy, f, stmts);
             }
             Instruction::Randomize { vx, imm } => {
                 let rnd_expr = self.trans_call_import("random", vec![], ffi::BinaryenInt32());
@@ -228,7 +232,8 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddI(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
-                let add_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, load_i_expr);
+                let add_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, load_i_expr);
                 let store_i_expr = self.store_i(add_expr);
                 // TODO: Wrapping
                 stmts.push(store_i_expr);
@@ -240,18 +245,21 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Instruction::SetST(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_st_expr = self.trans_call_import("set_st", vec![load_expr], ffi::BinaryenNone());
+                let set_st_expr =
+                    self.trans_call_import("set_st", vec![load_expr], ffi::BinaryenNone());
                 // TODO: Drop?
                 stmts.push(set_st_expr);
             }
             Instruction::SetDT(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_dt_expr = self.trans_call_import("set_dt", vec![load_expr], ffi::BinaryenNone());
+                let set_dt_expr =
+                    self.trans_call_import("set_dt", vec![load_expr], ffi::BinaryenNone());
                 // TODO: Drop?
                 stmts.push(set_dt_expr);
             }
             Instruction::WaitKey(vx) => {
-                let wait_key_expr = self.trans_call_import("wait_key", vec![], ffi::BinaryenInt32());
+                let wait_key_expr =
+                    self.trans_call_import("wait_key", vec![], ffi::BinaryenInt32());
                 let store_expr = self.store_reg(vx, wait_key_expr);
                 stmts.push(store_expr);
             }
@@ -264,7 +272,12 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), imm_1_expr, load_i_expr);
+                    let increment_i_expr = ffi::BinaryenBinary(
+                        self.module,
+                        ffi::BinaryenAddInt32(),
+                        imm_1_expr,
+                        load_i_expr,
+                    );
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -279,7 +292,12 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), imm_1_expr, load_i_expr);
+                    let increment_i_expr = ffi::BinaryenBinary(
+                        self.module,
+                        ffi::BinaryenAddInt32(),
+                        imm_1_expr,
+                        load_i_expr,
+                    );
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -310,7 +328,163 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn trans_call_import(&mut self, name: &str, operands: Vec<ffi::BinaryenExpressionRef>, result_ty: ffi::BinaryenType) -> ffi::BinaryenExpressionRef {
+    unsafe fn trans_apply(
+        &mut self,
+        vx: Reg,
+        vy: Reg,
+        f: Fun,
+        stmts: &mut Vec<ffi::BinaryenExpressionRef>,
+    ) {
+        let vx_expr = self.load_reg(vx);
+        let vy_expr = self.load_reg(vy);
+
+        match f {
+            Fun::Id => {
+                stmts.push(self.store_reg(vx, vy_expr));
+            }
+            Fun::Or => {
+                let or_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenOrInt32(), vx_expr, vy_expr);
+                stmts.push(or_expr);
+            }
+            Fun::And => {
+                let and_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), vx_expr, vy_expr);
+                stmts.push(and_expr);
+            }
+            Fun::Xor => {
+                let xor_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenXorInt32(), vx_expr, vy_expr);
+                stmts.push(xor_expr);
+            }
+            Fun::Add => {
+                // u32 $tmp = x + y
+                // $result = (tmp & 0xFFFF)
+                // $overflow = (tmp != result)
+
+                let add_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, vy_expr);
+                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenAndInt32(),
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
+                let store_result_expr = self.store_reg(vx, mask_expr);
+
+                stmts.push(store_result_expr);
+
+                let load_tmp_expr =
+                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_result_expr = self.load_reg(vx);
+                let overflow_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenNeInt32(),
+                    load_tmp_expr,
+                    load_result_expr,
+                );
+                let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
+
+                stmts.push(store_overflow_expr);
+            }
+            Fun::Subtract => {
+                let add_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenSubInt32(), vx_expr, vy_expr);
+                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenAndInt32(),
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
+                let store_result_expr = self.store_reg(vx, mask_expr);
+
+                stmts.push(store_result_expr);
+
+                let load_tmp_expr =
+                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_result_expr = self.load_reg(vx);
+                let overflow_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenNeInt32(),
+                    load_tmp_expr,
+                    load_result_expr,
+                );
+                let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
+
+                stmts.push(store_overflow_expr);
+            }
+            Fun::ShiftRight => {
+                // $result = y >> 1
+                // $vf = y & 0x01
+                let imm_1_expr = self.load_imm(1);
+                let shift_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenShrUInt32(), vy_expr, imm_1_expr);
+                let store_result_expr = self.store_reg(vx, shift_expr);
+                stmts.push(store_result_expr);
+
+                // TODO: It is OK to use same expr twice???
+                let mask_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), vy_expr, imm_1_expr);
+                let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
+                stmts.push(store_vf_expr);
+            }
+            Fun::SubtractInv => {
+                let add_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenSubInt32(), vy_expr, vx_expr);
+                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenAndInt32(),
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
+                let store_result_expr = self.store_reg(vx, mask_expr);
+
+                stmts.push(store_result_expr);
+
+                let load_tmp_expr =
+                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_result_expr = self.load_reg(vx);
+                let overflow_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenNeInt32(),
+                    load_tmp_expr,
+                    load_result_expr,
+                );
+                let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
+
+                stmts.push(store_overflow_expr);
+            }
+            Fun::ShiftLeft => {
+                // $result = y << 1;
+                // $vf = y << 1;
+                let imm_1_expr = self.load_imm(1);
+                let shift_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenShlInt32(), vy_expr, imm_1_expr);
+                let store_result_expr = self.store_reg(vx, shift_expr);
+                stmts.push(store_result_expr);
+
+                // TODO: It is OK to use same expr twice???
+                let mask_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenShlInt32(), vy_expr, imm_1_expr);
+                let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
+                stmts.push(store_vf_expr);
+            }
+            _ => panic!(),
+        }
+    }
+
+    fn trans_call_import(
+        &mut self,
+        name: &str,
+        operands: Vec<ffi::BinaryenExpressionRef>,
+        result_ty: ffi::BinaryenType,
+    ) -> ffi::BinaryenExpressionRef {
         // TODO: Optimize
         unsafe {
             let fn_name = CString::new(name).unwrap();
@@ -406,32 +580,12 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn load_mem_at_i(&mut self) -> ffi::BinaryenExpressionRef {
         let i_expr = self.load_i();
-        unsafe {
-            ffi::BinaryenLoad(
-                self.module,
-                1,
-                0,
-                0,
-                0,
-                ffi::BinaryenInt32(),
-                i_expr,
-            )
-        }
+        unsafe { ffi::BinaryenLoad(self.module, 1, 0, 0, 0, ffi::BinaryenInt32(), i_expr) }
     }
 
     fn store_mem_at_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
         let i_expr = self.load_i();
-        unsafe {
-            ffi::BinaryenStore(
-                self.module,
-                1,
-                0,
-                0,
-                i_expr,
-                value,
-                ffi::BinaryenInt32(),
-            )
-        }
+        unsafe { ffi::BinaryenStore(self.module, 1, 0, 0, i_expr, value, ffi::BinaryenInt32()) }
     }
 }
 
@@ -461,3 +615,5 @@ const I_MEM_ADDR: u32 = 80;
 fn reg_mem_addr(reg: Reg) -> u32 {
     (reg.index() as u32) + 80 + 2
 }
+
+const TMP_LOCAL: ffi::BinaryenIndex = 0;

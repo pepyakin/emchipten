@@ -130,7 +130,7 @@ impl<'a> SubroutineBuilder<'a> {
 
                 // Split instructions between BBs.
                 let (insts1, insts2) = {
-                    let splitted = insts.split_off((pc - start - 2) / 2);
+                    let splitted = insts.split_off((pc - start) / 2 - 1);
                     (insts, splitted)
                 };
                 let falltrough_addr = pc;
