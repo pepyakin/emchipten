@@ -59,10 +59,10 @@ impl Drop for TransCtx {
 
 fn trans(cfg: cfg::CFG) {
     let module = unsafe { ffi::BinaryenModuleCreate() };
-    let mut ctx = TransCtx { 
-        module, 
-        cfg, 
-        c_strings: Vec::new() 
+    let mut ctx = TransCtx {
+        module,
+        cfg,
+        c_strings: Vec::new(),
     };
 
     let mut routine_ctx = RoutineTransCtx::new(&mut ctx);
@@ -73,7 +73,7 @@ struct RoutineTransCtx<'t> {
     module: ffi::BinaryenModuleRef,
     routine: &'t cfg::Routine,
     relooper: ffi::RelooperRef,
-    c_strings: &'t mut Vec<CString>
+    c_strings: &'t mut Vec<CString>,
 }
 
 impl<'t> RoutineTransCtx<'t> {
@@ -139,7 +139,8 @@ impl<'t> RoutineTransCtx<'t> {
 
         unsafe {
             // TODO: 0??
-            let body_code = ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, 0, self.module);
+            let body_code =
+                ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, 0, self.module);
             // ffi::BinaryenExpressionPrint(body_code);
         }
     }
@@ -188,7 +189,8 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddImm { vx, imm } => {
                 let imm_expr = self.load_imm(imm.0 as u32);
                 let load_expr = self.load_reg(vx);
-                let add_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), load_expr, imm_expr);
+                let add_expr =
+                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), load_expr, imm_expr);
                 stmts.push(self.store_reg(vx, add_expr));
             }
             Instruction::Randomize { vx, imm } => {
@@ -197,9 +199,20 @@ impl<'t> RoutineTransCtx<'t> {
                 let random_name = random.as_ptr();
                 self.c_strings.push(random);
 
-                let rnd_expr = ffi::BinaryenCallImport(self.module, random_name, ptr::null_mut(), 0, ffi::BinaryenInt32());
+                let rnd_expr = ffi::BinaryenCallImport(
+                    self.module,
+                    random_name,
+                    ptr::null_mut(),
+                    0,
+                    ffi::BinaryenInt32(),
+                );
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
-                let mask_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), rnd_expr, mask_imm_expr);
+                let mask_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenAndInt32(),
+                    rnd_expr,
+                    mask_imm_expr,
+                );
                 let store_expr = self.store_reg(vx, mask_expr);
                 stmts.push(store_expr);
             }
@@ -215,7 +228,13 @@ impl<'t> RoutineTransCtx<'t> {
 
                 let operands = vec![x_expr, y_expr, n_expr];
 
-                let draw_expr = ffi::BinaryenCallImport(self.module, draw_name, operands.as_ptr() as _, operands.len() as _, ffi::BinaryenInt32());
+                let draw_expr = ffi::BinaryenCallImport(
+                    self.module,
+                    draw_name,
+                    operands.as_ptr() as _,
+                    operands.len() as _,
+                    ffi::BinaryenInt32(),
+                );
                 let store_expr = self.store_reg(Reg::Vf, draw_expr);
 
                 stmts.push(store_expr);
@@ -250,7 +269,7 @@ impl<'t> RoutineTransCtx<'t> {
                 self.load_imm(i_ptr),
                 self.load_imm(addr.0 as u32),
                 ffi::BinaryenInt32(),
-            )   
+            )
         }
     }
 
