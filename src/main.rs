@@ -182,6 +182,10 @@ impl<'t> RoutineTransCtx<'t> {
         stmts: &mut Vec<ffi::BinaryenExpressionRef>,
     ) {
         match *instruction {
+            Instruction::ClearScreen => {
+                let clear_expr = self.trans_call_import("clear_screen", vec![], ffi::BinaryenNone());
+                stmts.push(clear_expr);
+            }
             Instruction::PutImm { vx, imm } => {
                 let imm_expr = self.load_imm(imm.0 as u32);
                 stmts.push(self.store_reg(vx, imm_expr));
