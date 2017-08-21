@@ -27,17 +27,19 @@ impl<'a> Rom<'a> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct BB {
+    insts: Vec<Instruction>,
     start: usize,
     end: usize,
     terminator: Terminator,
 }
 
 impl BB {
-    fn new(start: usize, end: usize, terminator: Terminator) -> BB {
+    fn new(insts: Vec<Instruction>, start: usize, end: usize, terminator: Terminator) -> BB {
         assert!(start <= end);
         BB {
+            insts,
             start,
             end,
             terminator,
@@ -64,15 +66,15 @@ impl<'a> SubroutineBuilder<'a> {
 
     fn into_routine(self) -> Routine {
         let mut bbs = HashMap::new();
-        for bb in &self.bbs {
-            let mut insts = self.read_bb(*bb).unwrap();
-
-            if let Some(last_instruction) = insts.pop() {
-                assert!(last_instruction.is_terminating());
-            }
-
-            let basic_block = BasicBlock::new(insts, bb.terminator);
-            bbs.insert(BasicBlockId(Addr(bb.start as u16)), basic_block);
+        for bb in self.bbs {
+            let BB {
+                insts,
+                terminator,
+                start,
+                ..
+            } = bb;
+            let basic_block = BasicBlock::new(insts, terminator);
+            bbs.insert(BasicBlockId(Addr(start as u16)), basic_block);
         }
         Routine {
             entry: BasicBlockId(Addr(self.addr as u16)),
@@ -80,18 +82,16 @@ impl<'a> SubroutineBuilder<'a> {
         }
     }
 
-    fn read_bb(&self, bb: BB) -> Result<Vec<Instruction>> {
-        let mut insts = Vec::new();
-        for pc in (bb.start..bb.end).step_by(2) {
-            let inst = self.rom.decode_instruction(pc)?;
-            insts.push(inst);
-        }
-        Ok(insts)
-    }
-
-    fn seal_bb(&mut self, leader: usize, pc: usize, terminator: Terminator) {
+    fn seal_bb(
+        &mut self,
+        insts: Vec<Instruction>,
+        leader: usize,
+        pc: usize,
+        terminator: Terminator,
+    ) {
         println!("sealing {}, {}", leader, pc);
-        self.bbs.push(BB::new(leader, pc, terminator));
+        let bb = BB::new(insts, leader, pc, terminator);
+        self.bbs.push(bb);
     }
 
     fn find_bb(&self, pc: usize) -> Option<usize> {
@@ -106,6 +106,9 @@ impl<'a> SubroutineBuilder<'a> {
     fn build_bb(&mut self, seen_calls: &mut HashSet<Addr>, mut pc: usize) -> Result<()> {
         println!("building bb from {}...", pc);
         println!("{:?}", self.bbs);
+
+        // TODO: Так какой в этом смысл? Мб копировать инструкции в BB сразу?
+
         match self.find_bb(pc) {
             Some(bb_position) => {
                 if self.bbs
@@ -117,24 +120,37 @@ impl<'a> SubroutineBuilder<'a> {
                     return Ok(());
                 }
 
-                let bb = self.bbs.swap_remove(bb_position);
-                println!("spliting bb {}, {}", bb.start, bb.end);
+                let BB {
+                    mut insts,
+                    start,
+                    end,
+                    terminator,
+                } = self.bbs.swap_remove(bb_position);
+                println!("spliting bb {}, {}", start, end);
 
+                // Split instructions between BBs.
+                let (insts1, insts2) = {
+                    let splitted = insts.split_off((pc - start) / 2);
+                    (insts, splitted)
+                };
                 let falltrough_addr = pc;
 
                 // TODO: Is it ok?
                 self.bbs.push(BB::new(
-                    bb.start,
+                    insts1,
+                    start,
                     pc - 2,
                     Terminator::Jump {
                         target: BasicBlockId(Addr(falltrough_addr as u16)),
                     },
                 ));
-                self.bbs.push(BB::new(pc, bb.end, bb.terminator));
+                self.bbs.push(BB::new(insts2, pc, end, terminator));
                 return Ok(());
             }
             None => {}
         }
+
+        let mut insts: Vec<Instruction> = Vec::new();
 
         let leader = pc;
         loop {
@@ -148,7 +164,7 @@ impl<'a> SubroutineBuilder<'a> {
                     if self.root {
                         panic!("ret in root");
                     }
-                    self.seal_bb(leader, pc, Terminator::Ret);
+                    self.seal_bb(insts, leader, pc, Terminator::Ret);
                     break;
                 }
                 Call(addr) => {
@@ -157,6 +173,7 @@ impl<'a> SubroutineBuilder<'a> {
                 Jump(addr) => {
                     let jump_pc: usize = (addr.0 - 0x200) as usize;
                     self.seal_bb(
+                        insts,
                         leader,
                         pc,
                         Terminator::Jump { target: BasicBlockId(Addr(jump_pc as u16)) },
@@ -169,6 +186,7 @@ impl<'a> SubroutineBuilder<'a> {
                     let skip = pc + 4;
 
                     self.seal_bb(
+                        insts,
                         leader,
                         pc,
                         Terminator::Skip {
@@ -183,7 +201,9 @@ impl<'a> SubroutineBuilder<'a> {
                     self.build_bb(seen_calls, skip)?;
                     break;
                 }
-                _ => {}
+                _ => {
+                    insts.push(instruction);
+                }
             }
 
             pc += 2;

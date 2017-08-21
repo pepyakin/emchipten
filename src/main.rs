@@ -1,4 +1,4 @@
-#![feature(iterator_step_by, inclusive_range_syntax)]
+#![feature(inclusive_range_syntax)]
 
 extern crate byteorder;
 #[macro_use]
@@ -106,7 +106,7 @@ impl<'a, 't> RoutineTransCtx<'a, 't> {
                         ptr::null_mut(),
                         ptr::null_mut(),
                     );
-                }
+                },
                 Skip { cond, next, skip } => unsafe {
                     let cond = self.trans_cond(cond);
                     let skip_relooper_block = relooper_blocks[&skip];
