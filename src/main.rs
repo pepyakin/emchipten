@@ -281,6 +281,27 @@ impl<'t> RoutineTransCtx<'t> {
                     stmts.push(store_i_expr);
                 }
             }
+            Instruction::LoadGlyph(vx) => {
+                // (vx & 0xf) << 3
+                let vx_expr = self.load_reg(vx);
+                let mask_imm_expr = self.load_imm(0x0f);
+                let mask_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenAndInt32(),
+                    vx_expr,
+                    mask_imm_expr,
+                );
+                let shift_imm_expr = self.load_imm(3);
+                let shift_expr = ffi::BinaryenBinary(
+                    self.module,
+                    ffi::BinaryenShlInt32(),
+                    mask_expr,
+                    shift_imm_expr,
+                );
+                let store_i_expr = self.store_i(shift_expr);
+
+                stmts.push(store_i_expr);
+            }
             _ => panic!("unimplemented: {:#?}", instruction),
         }
     }
