@@ -335,7 +335,6 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn load_i(&mut self) -> ffi::BinaryenExpressionRef {
-        let i_ptr: u32 = 0x10;
         unsafe {
             ffi::BinaryenLoad(
                 self.module,
@@ -344,20 +343,19 @@ impl<'t> RoutineTransCtx<'t> {
                 0,
                 0,
                 ffi::BinaryenInt32(),
-                self.load_imm(i_ptr),
+                self.load_imm(I_MEM_ADDR),
             )
         }
     }
 
     fn store_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
-        let i_ptr: u32 = 0x10;
         unsafe {
             ffi::BinaryenStore(
                 self.module,
                 2,
                 0,
                 0,
-                self.load_imm(i_ptr),
+                self.load_imm(I_MEM_ADDR),
                 value,
                 ffi::BinaryenInt32(),
             )
@@ -366,7 +364,7 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_ptr: u32 = reg.index().into();
+            let reg_ptr: u32 = reg_mem_addr(reg);
             ffi::BinaryenLoad(
                 self.module,
                 1,
@@ -385,7 +383,7 @@ impl<'t> RoutineTransCtx<'t> {
         value: ffi::BinaryenExpressionRef,
     ) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_ptr: u32 = reg.index().into();
+            let reg_ptr: u32 = reg_mem_addr(reg);
             ffi::BinaryenStore(
                 self.module,
                 1,
@@ -431,4 +429,31 @@ impl<'t> RoutineTransCtx<'t> {
             )
         }
     }
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const FONT_SPRITES: [u8; 80] = [
+	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+	0x20, 0x60, 0x20, 0x20, 0x70, // 1
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+	0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+	0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+	0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+	0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+	0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+	0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+
+// 2 bytes
+const I_MEM_ADDR: u32 = 80;
+
+fn reg_mem_addr(reg: Reg) -> u32 {
+    (reg.index() as u32) + 80 + 2
 }
