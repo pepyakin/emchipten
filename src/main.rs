@@ -217,8 +217,16 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_expr);
             }
             Instruction::SetI(addr) => {
-                let store_i_expr = self.store_i_imm(addr);
+                let imm_expr = self.load_imm(addr.0 as u32);
+                let store_i_expr = self.store_i(imm_expr);
                 stmts.push(store_i_expr);
+            }
+            Instruction::AddI(vx) => {
+                let vx_expr = self.load_reg(vx);
+                let load_i_expr = self.load_i();
+                let add_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, load_i_expr);
+                // TODO: Wrapping
+                stmts.push(add_expr);
             }
             Instruction::GetDT(vx) => {
                 let get_dt_expr = self.trans_call_import("get_dt", vec![], ffi::BinaryenInt32());
@@ -269,7 +277,22 @@ impl<'t> RoutineTransCtx<'t> {
         unsafe { ffi::BinaryenBinary(self.module, ffi::BinaryenEqInt32(), lhs, rhs) }
     }
 
-    fn store_i_imm(&mut self, addr: Addr) -> ffi::BinaryenExpressionRef {
+    fn load_i(&mut self) -> ffi::BinaryenExpressionRef {
+        let i_ptr: u32 = 0x10;
+        unsafe {
+            ffi::BinaryenLoad(
+                self.module,
+                2,
+                0,
+                0,
+                0,
+                ffi::BinaryenInt32(),
+                self.load_imm(i_ptr),
+            )
+        }
+    }
+
+    fn store_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
         let i_ptr: u32 = 0x10;
         unsafe {
             ffi::BinaryenStore(
@@ -278,7 +301,7 @@ impl<'t> RoutineTransCtx<'t> {
                 0,
                 0,
                 self.load_imm(i_ptr),
-                self.load_imm(addr.0 as u32),
+                value,
                 ffi::BinaryenInt32(),
             )
         }
