@@ -220,6 +220,23 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_i_expr = self.store_i_imm(addr);
                 stmts.push(store_i_expr);
             }
+            Instruction::GetDT(vx) => {
+                let get_dt_expr = self.trans_call_import("get_dt", vec![], ffi::BinaryenInt32());
+                let store_expr = self.store_reg(vx, get_dt_expr);
+                stmts.push(store_expr);
+            }
+            Instruction::SetST(vx) => {
+                let load_expr = self.load_reg(vx);
+                let set_st_expr = self.trans_call_import("set_st", vec![load_expr], ffi::BinaryenNone());
+                // TODO: Drop?
+                stmts.push(set_st_expr);
+            }
+            Instruction::SetDT(vx) => {
+                let load_expr = self.load_reg(vx);
+                let set_dt_expr = self.trans_call_import("set_dt", vec![load_expr], ffi::BinaryenNone());
+                // TODO: Drop?
+                stmts.push(set_dt_expr);
+            }
             _ => panic!("unimplemented: {:#?}", instruction),
         }
     }
