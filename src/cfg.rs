@@ -167,9 +167,6 @@ impl<'a> SubroutineBuilder<'a> {
                     self.seal_bb(insts, leader, pc, Terminator::Ret);
                     break;
                 }
-                Call(addr) => {
-                    seen_calls.insert(addr);
-                }
                 Jump(addr) => {
                     let jump_pc: usize = (addr.0 - 0x200) as usize;
                     self.seal_bb(
@@ -201,11 +198,13 @@ impl<'a> SubroutineBuilder<'a> {
                     self.build_bb(seen_calls, skip)?;
                     break;
                 }
-                _ => {
-                    insts.push(instruction);
+                Call(addr) => {
+                    seen_calls.insert(addr);
                 }
+                _ => {}
             }
 
+            insts.push(instruction);
             pc += 2;
         }
 
