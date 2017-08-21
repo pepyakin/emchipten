@@ -225,8 +225,9 @@ impl<'t> RoutineTransCtx<'t> {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
                 let add_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, load_i_expr);
+                let store_i_expr = self.store_i(add_expr);
                 // TODO: Wrapping
-                stmts.push(add_expr);
+                stmts.push(store_i_expr);
             }
             Instruction::GetDT(vx) => {
                 let get_dt_expr = self.trans_call_import("get_dt", vec![], ffi::BinaryenInt32());
