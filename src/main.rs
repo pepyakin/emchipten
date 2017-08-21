@@ -245,6 +245,11 @@ impl<'t> RoutineTransCtx<'t> {
                 // TODO: Drop?
                 stmts.push(set_dt_expr);
             }
+            Instruction::WaitKey(vx) => {
+                let wait_key_expr = self.trans_call_import("wait_key", vec![], ffi::BinaryenInt32());
+                let store_expr = self.store_reg(vx, wait_key_expr);
+                stmts.push(store_expr);
+            }
             _ => panic!("unimplemented: {:#?}", instruction),
         }
     }
