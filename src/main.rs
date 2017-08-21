@@ -194,18 +194,7 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(self.store_reg(vx, add_expr));
             }
             Instruction::Randomize { vx, imm } => {
-                // TODO: Optimize
-                let random = CString::new("random").unwrap();
-                let random_name = random.as_ptr();
-                self.c_strings.push(random);
-
-                let rnd_expr = ffi::BinaryenCallImport(
-                    self.module,
-                    random_name,
-                    ptr::null_mut(),
-                    0,
-                    ffi::BinaryenInt32(),
-                );
+                let rnd_expr = self.trans_call_import("random", vec![], ffi::BinaryenInt32());
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
                 let mask_expr = ffi::BinaryenBinary(
                     self.module,
@@ -217,24 +206,12 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_expr);
             }
             Instruction::Draw { vx, vy, n } => {
-                // TODO: Optimize
-                let draw = CString::new("draw").unwrap();
-                let draw_name = draw.as_ptr();
-                self.c_strings.push(draw);
-
                 let x_expr = self.load_reg(vx);
                 let y_expr = self.load_reg(vy);
                 let n_expr = self.load_imm(n.0 as u32);
 
                 let operands = vec![x_expr, y_expr, n_expr];
-
-                let draw_expr = ffi::BinaryenCallImport(
-                    self.module,
-                    draw_name,
-                    operands.as_ptr() as _,
-                    operands.len() as _,
-                    ffi::BinaryenInt32(),
-                );
+                let draw_expr = self.trans_call_import("draw", operands, ffi::BinaryenInt32());
                 let store_expr = self.store_reg(Reg::Vf, draw_expr);
 
                 stmts.push(store_expr);
@@ -244,6 +221,23 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_i_expr);
             }
             _ => panic!("unimplemented: {:#?}", instruction),
+        }
+    }
+
+    fn trans_call_import(&mut self, name: &str, operands: Vec<ffi::BinaryenExpressionRef>, result_ty: ffi::BinaryenType) -> ffi::BinaryenExpressionRef {
+        // TODO: Optimize
+        unsafe {
+            let fn_name = CString::new(name).unwrap();
+            let fn_name_ptr = fn_name.as_ptr();
+            self.c_strings.push(fn_name);
+
+            ffi::BinaryenCallImport(
+                self.module,
+                fn_name_ptr,
+                operands.as_ptr() as _,
+                operands.len() as _,
+                result_ty,
+            )
         }
     }
 
