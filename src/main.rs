@@ -183,6 +183,20 @@ impl<'t> RoutineTransCtx<'t> {
         stmts: &mut Vec<ffi::BinaryenExpressionRef>,
     ) {
         match *instruction {
+            Instruction::Call(addr) => {
+                let routine_name = CString::new(format!("routine_{}", addr.0)).unwrap();
+                let routine_name_ptr = routine_name.as_ptr();
+                self.c_strings.push(routine_name);
+
+                let call_expr = ffi::BinaryenCall(
+                    self.module,
+                    routine_name_ptr,
+                    ptr::null_mut(),
+                    0 as _,
+                    ffi::BinaryenNone()
+                );
+                stmts.push(call_expr);
+            }
             Instruction::ClearScreen => {
                 let clear_expr =
                     self.trans_call_import("clear_screen", vec![], ffi::BinaryenNone());
