@@ -243,7 +243,7 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_i_expr = self.store_i_imm(addr);
                 stmts.push(store_i_expr);
             }
-            _ => panic!("unimplemented"),
+            _ => panic!("unimplemented: {:#?}", instruction),
         }
     }
 
