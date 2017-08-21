@@ -266,6 +266,21 @@ impl<'t> RoutineTransCtx<'t> {
                     stmts.push(store_i_expr);
                 }
             }
+            Instruction::StoreRegs(vx) => {
+                for offset in 0..(vx.index() as usize + 1) {
+                    let reg = Reg::from_index(offset as u8);
+                    let load_expr = self.load_reg(reg);
+                    let store_mem_expr = self.store_mem_at_i(load_expr);
+                    stmts.push(store_mem_expr);
+
+                    let imm_1_expr = self.load_imm(1);
+                    let load_i_expr = self.load_i();
+                    let increment_i_expr = ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), imm_1_expr, load_i_expr);
+                    let store_i_expr = self.store_i(increment_i_expr);
+
+                    stmts.push(store_i_expr);
+                }
+            }
             _ => panic!("unimplemented: {:#?}", instruction),
         }
     }
@@ -377,6 +392,21 @@ impl<'t> RoutineTransCtx<'t> {
                 0,
                 ffi::BinaryenInt32(),
                 i_expr,
+            )
+        }
+    }
+
+    fn store_mem_at_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
+        let i_expr = self.load_i();
+        unsafe {
+            ffi::BinaryenStore(
+                self.module,
+                1,
+                0,
+                0,
+                i_expr,
+                value,
+                ffi::BinaryenInt32(),
             )
         }
     }
