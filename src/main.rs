@@ -107,6 +107,8 @@ fn trans(cfg: &cfg::CFG) {
     };
 
     unsafe {
+        ffi::BinaryenModuleAutoDrop(module);
+
         ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
         ctx.add_import("random", vec![], ffi::BinaryenInt32());
         ctx.add_import("draw", vec![ffi::BinaryenInt32(), ffi::BinaryenInt32(), ffi::BinaryenInt32()], ffi::BinaryenInt32());
@@ -117,7 +119,9 @@ fn trans(cfg: &cfg::CFG) {
     }
 
     let mut binaryen_routines = HashMap::new();
-    for routine_id in ctx.cfg.subroutines().keys() {
+    let subroutines = ctx.cfg.subroutines().keys();
+    println!("subs {:#?}", subroutines);
+    for routine_id in subroutines {
         println!("translating {:?}", routine_id);
         let mut start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
         let binaryen_fn_ref = start_routine_ctx.trans();
@@ -137,7 +141,7 @@ fn trans(cfg: &cfg::CFG) {
         ffi::BinaryenModulePrint(module);
 
         let mut buf = Vec::<u8>::with_capacity(8192);
-        let written = ffi::BinaryenModuleWrite(module, buf.as_ptr() as *mut _, 8192);
+        let written = ffi::BinaryenModuleWrite(module, std::mem::transmute(buf.as_mut_ptr()), 8192);
         println!("written={}", written);
         if written == buf.capacity() {
             panic!("overflow?");
@@ -462,17 +466,20 @@ impl<'t> RoutineTransCtx<'t> {
             Fun::Or => {
                 let or_expr =
                     ffi::BinaryenBinary(self.module, ffi::BinaryenOrInt32(), vx_expr, vy_expr);
-                stmts.push(or_expr);
+                let store_expr = self.store_reg(vx, or_expr);
+                stmts.push(store_expr);
             }
             Fun::And => {
                 let and_expr =
                     ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), vx_expr, vy_expr);
-                stmts.push(and_expr);
+                let store_expr = self.store_reg(vx, and_expr);
+                stmts.push(store_expr);
             }
             Fun::Xor => {
                 let xor_expr =
                     ffi::BinaryenBinary(self.module, ffi::BinaryenXorInt32(), vx_expr, vy_expr);
-                stmts.push(xor_expr);
+                let store_expr = self.store_reg(vx, xor_expr);
+                stmts.push(store_expr);
             }
             Fun::Add => {
                 // u32 $tmp = x + y

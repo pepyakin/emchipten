@@ -240,7 +240,8 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
         subs.insert(subroutine_addr.into(), sub_builder);
 
-        for seen in seen_calls.difference(&seen_calls_from_sr).cloned() {
+        for seen in seen_calls_from_sr.difference(&seen_calls).cloned() {
+            println!("queueing {:#?}", seen);
             subroutine_stack.push(seen);
         }
 
