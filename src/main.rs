@@ -38,57 +38,102 @@ fn main() {
 
     let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
-    let module = cfg::build_cfg(&rom_buffer).unwrap();
-    println!("{:#?}", module);
-    module.print();
+    let cfg = cfg::build_cfg(&rom_buffer).unwrap();
+    println!("{:#?}", cfg);
+    cfg.print();
 
-    trans(module);
+    trans(&cfg);
 }
 
-struct TransCtx {
+struct TransCtx<'a> {
     module: ffi::BinaryenModuleRef,
-    cfg: cfg::CFG,
+    cfg: &'a cfg::CFG,
     c_strings: Vec<CString>,
+    procedure_fn_ty: ffi::BinaryenFunctionTypeRef,
 }
 
-impl Drop for TransCtx {
+impl<'a> Drop for TransCtx<'a> {
     fn drop(&mut self) {
         unsafe { ffi::BinaryenModuleDispose(self.module) }
     }
 }
 
-fn trans(cfg: cfg::CFG) {
+fn trans(cfg: &cfg::CFG) {
     let module = unsafe { ffi::BinaryenModuleCreate() };
+    let param_types: Vec<ffi::BinaryenType> = vec![];
+    let procedure_fn_ty = unsafe {
+        ffi::BinaryenAddFunctionType(
+            module, 
+            ptr::null_mut(),
+            ffi::BinaryenNone(),
+            param_types.as_ptr() as _,
+            param_types.len() as _
+        )
+    };
     let mut ctx = TransCtx {
         module,
         cfg,
         c_strings: Vec::new(),
+        procedure_fn_ty
     };
 
-    let mut routine_ctx = RoutineTransCtx::new(&mut ctx);
-    routine_ctx.trans();
+    
+
+    let mut binaryen_routines = HashMap::new();
+    for routine_id in ctx.cfg.subroutines().keys() {
+        println!("translating {:?}", routine_id);
+        let mut start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
+        let binaryen_fn_ref = start_routine_ctx.trans();
+
+        binaryen_routines.insert(routine_id, binaryen_fn_ref);
+    }
+
+    unsafe {
+        let start_binaryen_fn = binaryen_routines[&ctx.cfg.start()];
+        ffi::BinaryenSetStart(module, start_binaryen_fn);
+    
+        if ffi::BinaryenModuleValidate(module) == 0 {
+            panic!("module is not valid");
+        }
+
+        let mut buf = Vec::<u8>::with_capacity(8192);
+        let written = ffi::BinaryenModuleWrite(module, buf.as_ptr() as _, 8192);
+        if written == buf.len() {
+            panic!("overflow?");
+        }
+
+        use std::io::Write;
+
+        let mut file = File::create("foo.txt").unwrap();
+        file.write_all(&buf).unwrap();
+    }
 }
 
 struct RoutineTransCtx<'t> {
     module: ffi::BinaryenModuleRef,
+    routine_id: cfg::RoutineId,
     routine: &'t cfg::Routine,
     relooper: ffi::RelooperRef,
     c_strings: &'t mut Vec<CString>,
+    procedure_fn_ty: ffi::BinaryenFunctionTypeRef,
 }
 
 impl<'t> RoutineTransCtx<'t> {
-    fn new(ctx: &'t mut TransCtx) -> RoutineTransCtx<'t> {
-        let routine = ctx.cfg.start();
+    fn new(ctx: &'t mut TransCtx, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
+        let routine = &ctx.cfg.subroutines()[&routine_id];
         let relooper = unsafe { ffi::RelooperCreate() };
+
         RoutineTransCtx {
             module: ctx.module,
             routine,
+            routine_id,
             relooper,
             c_strings: &mut ctx.c_strings,
+            procedure_fn_ty: ctx.procedure_fn_ty,
         }
     }
 
-    fn trans(&mut self) {
+    fn trans(&mut self) -> ffi::BinaryenFunctionRef {
         let mut relooper_blocks = HashMap::new();
         for bb_id in self.routine.bbs.keys() {
             let relooper_block = self.trans_bb(*bb_id);
@@ -141,8 +186,22 @@ impl<'t> RoutineTransCtx<'t> {
             // TODO: 0??
             let body_code =
                 ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, 0, self.module);
-            // println!("body:");
             // ffi::BinaryenExpressionPrint(body_code);
+
+            let routine_name = CString::new(func_name_from_addr(self.routine_id.0)).unwrap();
+            let routine_name_ptr = routine_name.as_ptr();
+            self.c_strings.push(routine_name);
+
+            let var_types: Vec<ffi::BinaryenType> = vec![];
+
+            ffi::BinaryenAddFunction(
+                self.module,
+                routine_name_ptr,
+                self.procedure_fn_ty,
+                var_types.as_ptr() as _,
+                var_types.len() as _,
+                body_code
+            )
         }
     }
 
@@ -171,7 +230,7 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.len() as _,
                 ffi::BinaryenNone(),
             );
-            ffi::BinaryenExpressionPrint(code);
+            // ffi::BinaryenExpressionPrint(code);
             ffi::RelooperAddBlock(self.relooper, code)
         };
         relooper_block
@@ -184,7 +243,7 @@ impl<'t> RoutineTransCtx<'t> {
     ) {
         match *instruction {
             Instruction::Call(addr) => {
-                let routine_name = CString::new(format!("routine_{}", addr.0)).unwrap();
+                let routine_name = CString::new(func_name_from_addr(addr)).unwrap();
                 let routine_name_ptr = routine_name.as_ptr();
                 self.c_strings.push(routine_name);
 
@@ -620,6 +679,11 @@ impl<'t> RoutineTransCtx<'t> {
         let i_expr = self.load_i();
         unsafe { ffi::BinaryenStore(self.module, 1, 0, 0, i_expr, value, ffi::BinaryenInt32()) }
     }
+}
+
+
+fn func_name_from_addr(addr: Addr) -> String {
+    format!("routine_{}", addr.0)
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]

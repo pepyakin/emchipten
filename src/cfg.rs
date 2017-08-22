@@ -219,16 +219,14 @@ impl<'a> SubroutineBuilder<'a> {
 }
 
 pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
-    let mut sub_builder = SubroutineBuilder::new(Rom::new(rom), 0);
-    let mut seen_calls = HashSet::new();
-    sub_builder.build_cfg(&mut seen_calls)?;
-    let start = sub_builder;
-    let mut subs = HashMap::new();
+    // TODO: 0x200 and 0
 
-    let mut subroutine_stack = Vec::new();
-    for seen_call in seen_calls.iter().cloned() {
-        subroutine_stack.push(seen_call);
-    }
+    let mut seen_calls = HashSet::new();
+    let mut subs = HashMap::new();
+    let mut subroutine_stack: Vec<Addr> = Vec::new();
+
+    let start_subroutine_id = Addr(0x200);
+    subroutine_stack.push(start_subroutine_id);
 
     loop {
         let subroutine_addr = match subroutine_stack.pop() {
@@ -257,7 +255,7 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
         .collect();
 
     Ok(CFG {
-        start: start.into_routine(),
+        start: RoutineId(start_subroutine_id),
         subroutines,
     })
 }
@@ -287,7 +285,7 @@ impl Terminator {
 pub struct BasicBlockId(Addr);
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
-pub struct RoutineId(Addr);
+pub struct RoutineId(pub Addr);
 
 impl From<Addr> for RoutineId {
     fn from(addr: Addr) -> RoutineId {
@@ -341,13 +339,17 @@ pub struct Routine {
 
 #[derive(Debug)]
 pub struct CFG {
-    start: Routine,
+    start: RoutineId,
     subroutines: HashMap<RoutineId, Routine>,
 }
 
 impl CFG {
-    pub fn start(&self) -> &Routine {
-        &self.start
+    pub fn start(&self) -> RoutineId {
+        self.start
+    }
+
+    pub fn subroutines(&self) -> &HashMap<RoutineId, Routine> {
+        &self.subroutines
     }
 
     fn print_bb(
@@ -378,7 +380,6 @@ impl CFG {
     }
 
     pub fn print(&self) {
-        self.print_routine(&self.start);
         for subroutine in self.subroutines.values() {
             self.print_routine(subroutine);
         }
