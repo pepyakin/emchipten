@@ -58,6 +58,33 @@ impl<'a> Drop for TransCtx<'a> {
     }
 }
 
+impl<'a> TransCtx<'a> {
+    fn add_import(&mut self, name: &str, param_types: Vec<ffi::BinaryenType>, return_ty: ffi::BinaryenType) {
+        let fn_type = unsafe {
+            ffi::BinaryenAddFunctionType(
+                self.module, 
+                ptr::null_mut(), 
+                return_ty, 
+                param_types.as_ptr() as _,
+                param_types.len() as _
+            )
+        };
+
+        let fn_name = CString::new(name).unwrap();
+        let fn_name_ptr = fn_name.as_ptr();
+
+        let env_name = CString::new("env").unwrap();
+        let env_name_ptr = env_name.as_ptr();
+        
+        self.c_strings.push(env_name);
+        self.c_strings.push(fn_name);
+
+        unsafe {
+            ffi::BinaryenAddImport(self.module, fn_name_ptr, env_name_ptr, fn_name_ptr, fn_type);
+        }
+    }
+}
+
 fn trans(cfg: &cfg::CFG) {
     let module = unsafe { ffi::BinaryenModuleCreate() };
     let param_types: Vec<ffi::BinaryenType> = vec![];
@@ -70,14 +97,24 @@ fn trans(cfg: &cfg::CFG) {
             param_types.len() as _
         )
     };
+
+    let mut c_strings = Vec::new();
     let mut ctx = TransCtx {
         module,
         cfg,
-        c_strings: Vec::new(),
+        c_strings,
         procedure_fn_ty
     };
 
-    
+    unsafe {
+        ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
+        ctx.add_import("random", vec![], ffi::BinaryenInt32());
+        ctx.add_import("draw", vec![ffi::BinaryenInt32(), ffi::BinaryenInt32(), ffi::BinaryenInt32()], ffi::BinaryenInt32());
+        ctx.add_import("get_dt", vec![], ffi::BinaryenInt32());
+        ctx.add_import("set_dt", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
+        ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
+        ctx.add_import("wait_key", vec![], ffi::BinaryenInt32());
+    }
 
     let mut binaryen_routines = HashMap::new();
     for routine_id in ctx.cfg.subroutines().keys() {
@@ -96,16 +133,22 @@ fn trans(cfg: &cfg::CFG) {
             panic!("module is not valid");
         }
 
+        ffi::BinaryenModuleOptimize(module);
+        ffi::BinaryenModulePrint(module);
+
         let mut buf = Vec::<u8>::with_capacity(8192);
-        let written = ffi::BinaryenModuleWrite(module, buf.as_ptr() as _, 8192);
-        if written == buf.len() {
+        let written = ffi::BinaryenModuleWrite(module, buf.as_ptr() as *mut _, 8192);
+        println!("written={}", written);
+        if written == buf.capacity() {
             panic!("overflow?");
         }
 
         use std::io::Write;
 
-        let mut file = File::create("foo.txt").unwrap();
+        let mut file = File::create("out.wasm").unwrap();
         file.write_all(&buf).unwrap();
+
+        println!("buf={:#?}", buf);
     }
 }
 
