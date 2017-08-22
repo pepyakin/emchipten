@@ -230,16 +230,18 @@ impl<'t> RoutineTransCtx<'t> {
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
         unsafe {
-            // TODO: 0??
             let body_code =
-                ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, 0, self.module);
+                ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, LABEL_HELPER_LOCAL, self.module);
             // ffi::BinaryenExpressionPrint(body_code);
 
             let routine_name = CString::new(func_name_from_addr(self.routine_id.0)).unwrap();
             let routine_name_ptr = routine_name.as_ptr();
             self.c_strings.push(routine_name);
 
-            let var_types: Vec<ffi::BinaryenType> = vec![];
+            let var_types: Vec<ffi::BinaryenType> = vec![
+                ffi::BinaryenInt32(),
+                ffi::BinaryenInt32()
+            ];
 
             ffi::BinaryenAddFunction(
                 self.module,
@@ -764,3 +766,4 @@ fn reg_mem_addr(reg: Reg) -> u32 {
 }
 
 const TMP_LOCAL: ffi::BinaryenIndex = 0;
+const LABEL_HELPER_LOCAL: ffi::BinaryenIndex = 1;
