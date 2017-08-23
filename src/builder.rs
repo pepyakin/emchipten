@@ -39,21 +39,15 @@ impl Module {
     pub fn set_start(&mut self, fn_ref: &FnRef) {
     }
 
-    pub fn builder<'a>(&'a self) -> Builder<'a> {
-        Builder {
-            module: self.module,
-            c_strings: self.c_strings.clone(),
-            _marker: PhantomData
-        }
-    }
-
-    pub fn new_fn_type(&self, name: Option<CString>, ty: Option<ValueTy>, param_tys: Vec<ValueTy>) -> FnType {
+    pub fn new_fn_type(&self, name: Option<CString>, ty: Ty, param_tys: Vec<ValueTy>) -> FnType {
         let inner = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
             ffi::BinaryenAddFunctionType(
                 self.module,
                 name_ptr,
-                
+                ty.into(),
+                param_tys.as_ptr() as _,
+                param_tys.len() as _
             )
         };
         FnType {
@@ -62,8 +56,20 @@ impl Module {
     }
 
     fn save_string_and_return_ptr(&self, string: CString) -> *const c_char {
+        let str_ptr = string.as_ptr();
         self.c_strings.borrow_mut().push(string);
-        string.as_ptr()
+        str_ptr
+    }
+
+    // TODO: undefined ty?
+    // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
+    pub fn block<'a>(&'a mut self, name: CString, mut children: Vec<Expr<'a>>, ty: Ty) -> Expr<'a> {
+        let name_ptr = self.save_string_and_return_ptr(name);
+
+        let binaryen_expr = unsafe {
+            ffi::BinaryenBlock(self.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
+        };
+        Expr::from_raw(binaryen_expr)
     }
 }
 
@@ -81,26 +87,8 @@ pub struct FnRef {
     module: ffi::BinaryenModuleRef,
 }
 
-pub struct Builder<'a> {
-    module: ffi::BinaryenModuleRef,
-    c_strings: Rc<RefCell<Vec<CString>>>,
-    _marker: PhantomData<&'a ()>
-}
-
-impl<'a> Builder<'a> {
-    // TODO: undefined ty?
-    // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
-    fn block(&mut self, name: CString, mut children: Vec<Expr<'a>>, ty: ValueTy) -> Expr<'a> {
-        let name_ptr = name.as_ptr();
-        self.c_strings.borrow_mut().push(name);
-
-        let binaryen_expr = unsafe {
-            ffi::BinaryenBlock(self.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
-        };
-        Expr::from_raw(binaryen_expr)
-    }
-}
-
+/// Type of the values. These can be found on the stack and 
+/// in the local vars.
 #[derive(Copy, Clone)]
 pub enum ValueTy {
     I32,
@@ -108,6 +96,8 @@ pub enum ValueTy {
     F32,
     F64
 }
+
+pub struct Ty(Option<ValueTy>);
 
 impl From<ValueTy> for ffi::BinaryenType {
     fn from(ty: ValueTy) -> ffi::BinaryenType {
@@ -117,6 +107,17 @@ impl From<ValueTy> for ffi::BinaryenType {
                 ValueTy::I64 => ffi::BinaryenInt64(),
                 ValueTy::F32 => ffi::BinaryenFloat32(),
                 ValueTy::F64 => ffi::BinaryenFloat64(),
+            }
+        }
+    }
+}
+
+impl From<Ty> for ffi::BinaryenType {
+    fn from(ty: Ty) -> ffi::BinaryenType {
+        match ty.0 {
+            Some(ty) => ty.into(),
+            None => unsafe {
+                ffi::BinaryenNone()
             }
         }
     }
