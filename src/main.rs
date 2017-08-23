@@ -108,6 +108,20 @@ fn trans(cfg: &cfg::CFG) {
     };
 
     unsafe {
+        let segments = vec![&FONT_SPRITES as *const u8 as *const c_char];
+        let segment_offsets = vec![ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))];
+        let segment_sizes = vec![FONT_SPRITES.len()];
+        ffi::BinaryenSetMemory(
+            module,
+            1,
+            1,
+            get_string(&mut ctx.c_strings, "mem".to_owned()),
+            segments.as_ptr() as _,
+            segment_offsets.as_ptr() as _,
+            segment_sizes.as_ptr() as _,
+            1
+        );
+
         ffi::BinaryenModuleAutoDrop(module);
 
         ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
