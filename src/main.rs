@@ -19,6 +19,7 @@ use std::path::Path;
 use instruction::*;
 use binaryen::ffi;
 use std::ffi::CString;
+use std::os::raw::c_char;
 
 use std::collections::HashMap;
 
@@ -116,6 +117,26 @@ fn trans(cfg: &cfg::CFG) {
         ctx.add_import("set_dt", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("wait_key", vec![], ffi::BinaryenInt32());
+
+        ffi::BinaryenAddGlobal(
+            module, 
+            get_string(&mut ctx.c_strings, "regI".to_string()),
+            ffi::BinaryenInt32(),
+            1,
+            ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
+        );
+
+        for i in 0..16 {
+            let reg = Reg::from_index(i);
+            let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
+            ffi::BinaryenAddGlobal(
+                module, 
+                reg_name_ptr,
+                ffi::BinaryenInt32(),
+                1,
+                ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
+            );
+        }
     }
 
     let mut binaryen_routines = HashMap::new();
@@ -658,43 +679,33 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn load_i(&mut self) -> ffi::BinaryenExpressionRef {
         unsafe {
-            ffi::BinaryenLoad(
+            let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
+            ffi::BinaryenGetGlobal(
                 self.module,
-                2,
-                0,
-                0,
-                0,
-                ffi::BinaryenInt32(),
-                self.load_imm(I_MEM_ADDR),
+                reg_name_ptr,
+                ffi::BinaryenInt32()
             )
         }
     }
 
     fn store_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
         unsafe {
-            ffi::BinaryenStore(
+            let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
+            ffi::BinaryenSetGlobal(
                 self.module,
-                2,
-                0,
-                0,
-                self.load_imm(I_MEM_ADDR),
-                value,
-                ffi::BinaryenInt32(),
+                reg_name_ptr,
+                value
             )
         }
     }
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_ptr: u32 = reg_mem_addr(reg);
-            ffi::BinaryenLoad(
+            let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
+            ffi::BinaryenGetGlobal(
                 self.module,
-                1,
-                0,
-                0,
-                0,
-                ffi::BinaryenInt32(),
-                self.load_imm(reg_ptr),
+                reg_name_ptr,
+                ffi::BinaryenInt32()
             )
         }
     }
@@ -705,15 +716,11 @@ impl<'t> RoutineTransCtx<'t> {
         value: ffi::BinaryenExpressionRef,
     ) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_ptr: u32 = reg_mem_addr(reg);
-            ffi::BinaryenStore(
+            let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
+            ffi::BinaryenSetGlobal(
                 self.module,
-                1,
-                0,
-                0,
-                self.load_imm(reg_ptr),
-                value,
-                ffi::BinaryenInt32(),
+                reg_name_ptr,
+                value
             )
         }
     }
@@ -758,12 +765,17 @@ const FONT_SPRITES: [u8; 80] = [
 	0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
-// 2 bytes
-const I_MEM_ADDR: u32 = 80;
-
-fn reg_mem_addr(reg: Reg) -> u32 {
-    (reg.index() as u32) + 80 + 2
-}
-
 const TMP_LOCAL: ffi::BinaryenIndex = 0;
 const LABEL_HELPER_LOCAL: ffi::BinaryenIndex = 1;
+
+fn get_string(c_strings: &mut Vec<CString>, string: String) -> *const c_char {
+    let c_string = CString::new(string).unwrap();
+    let c_string_ptr = c_string.as_ptr();
+    c_strings.push(c_string);
+    c_string_ptr
+}
+
+fn get_reg_name(c_strings: &mut Vec<CString>, reg: Reg) -> *const c_char {
+    let reg_name = format!("V{}", reg.index());
+    get_string(c_strings, reg_name)
+}
