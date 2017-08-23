@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::os::raw::c_char;
+use std::os::raw::{c_char, c_int};
 use std::ptr;
 
 pub struct Module {
@@ -88,15 +88,28 @@ impl Module {
         }
     }
 
+    pub fn new_global<'a>(&'a self, name: CString, ty: ValueTy, mutable: bool, init: Expr<'a>) {
+        let name_ptr = self.save_string_and_return_ptr(name);
+        unsafe {
+            ffi::BinaryenAddGlobal(
+                self.module, 
+                name_ptr,
+                ty.into(),
+                mutable as c_int,
+                init.inner
+            );
+        }
+    }
+
     // TODO: undefined ty?
     // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
     pub fn block<'a>(&'a mut self, name: CString, mut children: Vec<Expr<'a>>, ty: Ty) -> Expr<'a> {
         let name_ptr = self.save_string_and_return_ptr(name);
 
-        let binaryen_expr = unsafe {
+        let raw_expr = unsafe {
             ffi::BinaryenBlock(self.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
         };
-        Expr::from_raw(binaryen_expr)
+        Expr::from_raw(raw_expr)
     }
 }
 
@@ -175,6 +188,26 @@ impl<'m> Expr<'m> {
 
     pub unsafe fn into_raw(self) -> ffi::BinaryenExpressionRef {
         self.inner
+    }
+}
+
+pub enum Literal {
+    I32(u32),
+    I64(u64),
+    F32(f32),
+    F64(f64)
+}
+
+impl From<Literal> for ffi::BinaryenLiteral {
+    fn from(literal: Literal) -> ffi::BinaryenLiteral {
+        unsafe {
+            match literal {
+                Literal::I32(v) => ffi::BinaryenLiteralInt32(v as i32),
+                Literal::I64(v) => ffi::BinaryenLiteralInt64(v as i64),
+                Literal::F32(v) => ffi::BinaryenLiteralFloat32(v),
+                Literal::F64(v) => ffi::BinaryenLiteralFloat64(v),
+            }
+        }
     }
 }
 
