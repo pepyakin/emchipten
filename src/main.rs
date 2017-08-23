@@ -173,10 +173,10 @@ fn trans(cfg: &cfg::CFG) {
         panic!("module is not valid");
     }
 
-    unsafe {
-        ffi::BinaryenModuleOptimize(module);
-        ffi::BinaryenModulePrint(module);
+    builder.optimize();
+    builder.print();
 
+    unsafe {
         let mut buf = Vec::<u8>::with_capacity(8192);
         let written = ffi::BinaryenModuleWrite(module, std::mem::transmute(buf.as_mut_ptr()), 8192);
         println!("written={}", written);
