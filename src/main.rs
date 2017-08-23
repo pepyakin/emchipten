@@ -169,11 +169,11 @@ fn trans(cfg: &cfg::CFG) {
     let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
     builder.set_start(start_binaryen_fn);
 
-    unsafe {
-        if ffi::BinaryenModuleValidate(module) == 0 {
-            panic!("module is not valid");
-        }
+    if !builder.is_valid() {
+        panic!("module is not valid");
+    }
 
+    unsafe {
         ffi::BinaryenModuleOptimize(module);
         ffi::BinaryenModulePrint(module);
 
