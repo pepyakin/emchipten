@@ -10,6 +10,7 @@ extern crate binaryen;
 mod instruction;
 mod error;
 mod cfg;
+mod builder;
 
 pub use error::*;
 
