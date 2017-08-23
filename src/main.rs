@@ -53,7 +53,7 @@ struct TransCtx<'a> {
     module: ffi::BinaryenModuleRef,
     cfg: &'a cfg::CFG,
     c_strings: Vec<CString>,
-    procedure_fn_ty: ffi::BinaryenFunctionTypeRef,
+    procedure_fn_ty: FnType,
 }
 
 impl<'a> Drop for TransCtx<'a> {
@@ -92,15 +92,14 @@ impl<'a> TransCtx<'a> {
 fn trans(cfg: &cfg::CFG) {
     let module = unsafe { ffi::BinaryenModuleCreate() };
     let param_types: Vec<ffi::BinaryenType> = vec![];
-    let procedure_fn_ty = unsafe {
-        ffi::BinaryenAddFunctionType(
-            module, 
-            ptr::null_mut(),
-            ffi::BinaryenNone(),
-            param_types.as_ptr() as _,
-            param_types.len() as _
-        )
-    };
+
+    let mut builder = Module::from_raw(module);
+    
+    let procedure_fn_ty = builder.new_fn_type(
+        None,
+        Ty::none(),
+        vec![]
+    );
 
     let c_strings = Vec::new();
     let mut ctx = TransCtx {
@@ -161,16 +160,16 @@ fn trans(cfg: &cfg::CFG) {
     println!("subs {:#?}", subroutines);
     for routine_id in subroutines {
         println!("translating {:?}", routine_id);
-        let start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
+        let start_routine_ctx = RoutineTransCtx::new(&mut ctx, &mut builder, *routine_id);
         let binaryen_fn_ref = start_routine_ctx.trans();
 
         binaryen_routines.insert(routine_id, binaryen_fn_ref);
     }
 
+    let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
+    builder.set_start(start_binaryen_fn);
+
     unsafe {
-        let start_binaryen_fn = binaryen_routines[&ctx.cfg.start()];
-        ffi::BinaryenSetStart(module, start_binaryen_fn);
-    
         if ffi::BinaryenModuleValidate(module) == 0 {
             panic!("module is not valid");
         }
@@ -196,26 +195,28 @@ fn trans(cfg: &cfg::CFG) {
 
 struct RoutineTransCtx<'t> {
     module: ffi::BinaryenModuleRef, // should be 't eventually
+    builder: &'t mut Module,
     routine_id: cfg::RoutineId,
     routine: &'t cfg::Routine,
     c_strings: &'t mut Vec<CString>,
-    procedure_fn_ty: ffi::BinaryenFunctionTypeRef,
+    procedure_fn_ty: &'t FnType,
 }
 
 impl<'t> RoutineTransCtx<'t> {
-    fn new(ctx: &'t mut TransCtx, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
+    fn new(ctx: &'t mut TransCtx, builder: &'t mut Module, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
 
         RoutineTransCtx {
             module: ctx.module,
+            builder: builder,
             routine,
             routine_id,
             c_strings: &mut ctx.c_strings,
-            procedure_fn_ty: ctx.procedure_fn_ty,
+            procedure_fn_ty: &ctx.procedure_fn_ty,
         }
     }
 
-    fn trans(mut self) -> ffi::BinaryenFunctionRef {
+    fn trans(mut self) -> FnRef {
         let mut relooper = Relooper::new();
         let mut relooper_blocks: HashMap<cfg::BasicBlockId, RelooperBlockId> = HashMap::new();
         for bb_id in self.routine.bbs.keys() {
@@ -251,31 +252,17 @@ impl<'t> RoutineTransCtx<'t> {
 
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
-        unsafe {
-            let builder_module = Module::from_raw(self.module);
-            let body_code = relooper.render(&builder_module, relooper_entry_block, LABEL_HELPER_LOCAL).into_raw();
-            std::mem::forget(builder_module);
-
-            // ffi::BinaryenExpressionPrint(body_code);
-
-            let routine_name = CString::new(func_name_from_addr(self.routine_id.0)).unwrap();
-            let routine_name_ptr = routine_name.as_ptr();
-            self.c_strings.push(routine_name);
-
-            let var_types: Vec<ffi::BinaryenType> = vec![
-                ffi::BinaryenInt32(),
-                ffi::BinaryenInt32()
-            ];
-
-            ffi::BinaryenAddFunction(
-                self.module,
-                routine_name_ptr,
-                self.procedure_fn_ty,
-                var_types.as_ptr() as _,
-                var_types.len() as _,
-                body_code
-            )
-        }
+        let body_code = relooper.render(&self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
+        let var_types = vec![
+            ValueTy::I32,
+            ValueTy::I32,
+        ];
+        self.builder.new_fn(
+            CString::new(func_name_from_addr(self.routine_id.0)).unwrap(),
+            &self.procedure_fn_ty,
+            var_types,
+            body_code
+        )
     }
 
     fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> Expr<'t> {

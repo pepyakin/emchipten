@@ -126,6 +126,16 @@ pub enum ValueTy {
 
 pub struct Ty(Option<ValueTy>);
 
+impl Ty {
+    pub fn none() -> Ty {
+        Ty(None)
+    }
+
+    pub fn value(ty: ValueTy) -> Ty {
+        Ty(Some(ty))
+    }
+}
+
 impl From<ValueTy> for ffi::BinaryenType {
     fn from(ty: ValueTy) -> ffi::BinaryenType {
         unsafe {
