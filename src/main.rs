@@ -109,6 +109,8 @@ fn trans(cfg: &cfg::CFG) {
         procedure_fn_ty
     };
 
+    builder.auto_drop();
+
     unsafe {
         let segments = vec![&FONT_SPRITES as *const u8 as *const c_char];
         let segment_offsets = vec![ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))];
@@ -123,8 +125,6 @@ fn trans(cfg: &cfg::CFG) {
             segment_sizes.as_ptr() as _,
             1
         );
-
-        ffi::BinaryenModuleAutoDrop(module);
 
         ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
         ctx.add_import("random", vec![], ffi::BinaryenInt32());
