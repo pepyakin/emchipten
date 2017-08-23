@@ -12,6 +12,8 @@ mod error;
 mod cfg;
 mod builder;
 
+use builder::*;
+
 pub use error::*;
 
 use std::fs::File;
@@ -100,7 +102,7 @@ fn trans(cfg: &cfg::CFG) {
         )
     };
 
-    let mut c_strings = Vec::new();
+    let c_strings = Vec::new();
     let mut ctx = TransCtx {
         module,
         cfg,
@@ -159,7 +161,7 @@ fn trans(cfg: &cfg::CFG) {
     println!("subs {:#?}", subroutines);
     for routine_id in subroutines {
         println!("translating {:?}", routine_id);
-        let mut start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
+        let start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
         let binaryen_fn_ref = start_routine_ctx.trans();
 
         binaryen_routines.insert(routine_id, binaryen_fn_ref);
@@ -193,10 +195,9 @@ fn trans(cfg: &cfg::CFG) {
 }
 
 struct RoutineTransCtx<'t> {
-    module: ffi::BinaryenModuleRef,
+    module: ffi::BinaryenModuleRef, // should be 't eventually
     routine_id: cfg::RoutineId,
     routine: &'t cfg::Routine,
-    relooper: ffi::RelooperRef,
     c_strings: &'t mut Vec<CString>,
     procedure_fn_ty: ffi::BinaryenFunctionTypeRef,
 }
@@ -204,22 +205,22 @@ struct RoutineTransCtx<'t> {
 impl<'t> RoutineTransCtx<'t> {
     fn new(ctx: &'t mut TransCtx, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
-        let relooper = unsafe { ffi::RelooperCreate() };
 
         RoutineTransCtx {
             module: ctx.module,
             routine,
             routine_id,
-            relooper,
             c_strings: &mut ctx.c_strings,
             procedure_fn_ty: ctx.procedure_fn_ty,
         }
     }
 
-    fn trans(&mut self) -> ffi::BinaryenFunctionRef {
-        let mut relooper_blocks = HashMap::new();
+    fn trans(mut self) -> ffi::BinaryenFunctionRef {
+        let mut relooper = Relooper::new();
+        let mut relooper_blocks: HashMap<cfg::BasicBlockId, RelooperBlockId> = HashMap::new();
         for bb_id in self.routine.bbs.keys() {
-            let relooper_block = self.trans_bb(*bb_id);
+            let code = self.trans_bb(*bb_id);
+            let relooper_block = relooper.add_block(code);
             relooper_blocks.insert(*bb_id, relooper_block);
         }
 
@@ -233,32 +234,17 @@ impl<'t> RoutineTransCtx<'t> {
                 Ret => {
                     // Return should be added in trans_bb()
                 }
-                Jump { target } => unsafe {
+                Jump { target } => {
                     let to_relooper_block = relooper_blocks[&target];
-                    ffi::RelooperAddBranch(
-                        from_relooper_block,
-                        to_relooper_block,
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                    );
+                    relooper.add_branch(from_relooper_block, to_relooper_block, None, None);
                 },
-                Skip { predicate, next, skip } => unsafe {
+                Skip { predicate, next, skip } => {
                     let predicate_expr = self.trans_predicate(predicate);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
-                    ffi::RelooperAddBranch(
-                        from_relooper_block,
-                        skip_relooper_block,
-                        predicate_expr,
-                        ptr::null_mut(),
-                    );
-                    ffi::RelooperAddBranch(
-                        from_relooper_block,
-                        next_relooper_block,
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                    );
+                    relooper.add_branch(from_relooper_block, skip_relooper_block, Some(Expr::from_raw(predicate_expr)), None);
+                    relooper.add_branch(from_relooper_block, next_relooper_block, None, None);
                 },
             }
         }
@@ -266,8 +252,10 @@ impl<'t> RoutineTransCtx<'t> {
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
         unsafe {
-            let body_code =
-                ffi::RelooperRenderAndDispose(self.relooper, relooper_entry_block, LABEL_HELPER_LOCAL, self.module);
+            let builder_module = Module::from_raw(self.module);
+            let body_code = relooper.render(&builder_module, relooper_entry_block, LABEL_HELPER_LOCAL).into_raw();
+            std::mem::forget(builder_module);
+
             // ffi::BinaryenExpressionPrint(body_code);
 
             let routine_name = CString::new(func_name_from_addr(self.routine_id.0)).unwrap();
@@ -290,7 +278,7 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> ffi::RelooperBlockRef {
+    fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> Expr<'t> {
         let bb = &self.routine.bbs[&bb_id];
 
         println!("{:#?}", bb);
@@ -307,18 +295,17 @@ impl<'t> RoutineTransCtx<'t> {
             }
         }
 
-        let relooper_block = unsafe {
-            let code = ffi::BinaryenBlock(
-                self.module,
-                ptr::null_mut(),
-                stmts.as_ptr() as _,
-                stmts.len() as _,
-                ffi::BinaryenNone(),
-            );
-            // ffi::BinaryenExpressionPrint(code);
-            ffi::RelooperAddBlock(self.relooper, code)
+        let raw_expr = unsafe {
+            ffi::BinaryenBlock(
+            self.module,
+            ptr::null_mut(),
+            stmts.as_ptr() as _,
+            stmts.len() as _,
+            ffi::BinaryenNone(),
+            )
         };
-        relooper_block
+        
+        Expr::from_raw(raw_expr)
     }
 
     unsafe fn trans_instruction(

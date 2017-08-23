@@ -12,6 +12,13 @@ pub struct Module {
 }
 
 impl Module {
+    pub fn from_raw(module: ffi::BinaryenModuleRef) -> Module {
+        Module {
+            module,
+            c_strings: Rc::new(RefCell::new(Vec::new()))
+        }
+    }
+
     pub fn auto_drop(&mut self) {
         unsafe {
             ffi::BinaryenModuleAutoDrop(self.module);
@@ -30,13 +37,16 @@ impl Module {
         }
     }
 
-    pub fn print(&mut self) {
+    pub fn print(&self) {
         unsafe {
             ffi::BinaryenModulePrint(self.module)
         }
     }
 
     pub fn set_start(&mut self, fn_ref: &FnRef) {
+        unsafe {
+            ffi::BinaryenSetStart(self.module, fn_ref.inner);
+        }
     }
 
     pub fn new_fn_type(&self, name: Option<CString>, ty: Ty, param_tys: Vec<ValueTy>) -> FnType {
@@ -59,6 +69,23 @@ impl Module {
         let str_ptr = string.as_ptr();
         self.c_strings.borrow_mut().push(string);
         str_ptr
+    }
+
+    pub fn new_fn<'a>(&'a self, name: CString, fn_ty: &FnType, var_tys: Vec<ValueTy>, body: Expr<'a>) -> FnRef {
+        let inner = unsafe {
+            let name_ptr = self.save_string_and_return_ptr(name);
+            ffi::BinaryenAddFunction(
+                self.module,
+                name_ptr,
+                fn_ty.inner,
+                var_tys.as_ptr() as _,
+                var_tys.len() as _,
+                body.inner
+            )
+        };
+        FnRef {
+            inner
+        }
     }
 
     // TODO: undefined ty?
@@ -84,7 +111,7 @@ pub struct FnType {
 }
 
 pub struct FnRef {
-    module: ffi::BinaryenModuleRef,
+    inner: ffi::BinaryenFunctionRef,
 }
 
 /// Type of the values. These can be found on the stack and 
@@ -123,38 +150,66 @@ impl From<Ty> for ffi::BinaryenType {
     }
 }
 
-pub struct Expr<'a> {
+pub struct Expr<'m> {
     inner: ffi::BinaryenExpressionRef,
-    _phantom: PhantomData<&'a ()>
+    _module: PhantomData<&'m ()>
 }
 
-impl<'a> Expr<'a> {
+impl<'m> Expr<'m> {
     pub fn from_raw<'b>(raw: ffi::BinaryenExpressionRef) -> Expr<'b> {
         Expr {
             inner: raw,
-            _phantom: PhantomData
+            _module: PhantomData
         }
+    }
+
+    pub unsafe fn into_raw(self) -> ffi::BinaryenExpressionRef {
+        self.inner
     }
 }
 
-// pub struct Relooper<'a> {
-//     inner: ffi::RelooperRef,
-//     _phantom: PhantomData<&'a ()>
-// }
+#[derive(Copy, Clone)]
+pub struct RelooperBlockId(usize);
 
-// impl<'a> Relooper<'a> {
-//     pub fn add_block(&mut self, expr: Expr) -> RelooperBlock {
+pub struct Relooper {
+    inner: ffi::RelooperRef,
+    blocks: Vec<ffi::RelooperBlockRef>,
+}
 
-//     }
+impl Relooper {
+    pub fn new() -> Relooper {
+        Relooper {
+            inner: unsafe { ffi::RelooperCreate() },
+            blocks: Vec::new()
+        }
+    }
 
-//     pub fn render(self, module: Module, entry: RelooperBlock, label_helper: u32) -> Expr {
-//     }
-// }
+    pub fn add_block<'m>(&mut self, expr: Expr<'m>) -> RelooperBlockId {
+        let inner = unsafe {
+            ffi::RelooperAddBlock(self.inner, expr.inner)
+        };
+        let index = self.blocks.len();
+        self.blocks.push(inner);
 
-// pub struct RelooperBlock<'a> {
-//     pub fn add_branch(&mut self, to: &RelooperBlock, condition: Option<Expr>, code: Option<Expr>) {
+        RelooperBlockId(index)
+    }
 
-//     }
-// }
+    pub fn render<'m>(self, module: &'m Module, entry: RelooperBlockId, label_helper: u32) -> Expr<'m> {
+        let entry = self.blocks[entry.0];
+        let inner = unsafe {
+            ffi::RelooperRenderAndDispose(self.inner, entry, label_helper as _, module.module)
+        };
+        Expr::from_raw(inner)
+    }
 
+    pub fn add_branch<'m>(&mut self, from: RelooperBlockId, to: RelooperBlockId, condition: Option<Expr<'m>>, code: Option<Expr<'m>>) {
+        let from_block = self.blocks[from.0];
+        let to_block = self.blocks[to.0];
 
+        unsafe {
+            let condition_ptr = condition.map_or(ptr::null_mut(), |e| e.inner);
+            let code_ptr = code.map_or(ptr::null_mut(), |e| e.inner);
+            ffi::RelooperAddBranch(from_block as _, to_block as _, condition_ptr, code_ptr)
+        }
+    }
+}
