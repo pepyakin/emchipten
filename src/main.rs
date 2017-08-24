@@ -21,7 +21,6 @@ use std::path::Path;
 use instruction::*;
 use binaryen::ffi;
 use std::ffi::CString;
-use std::os::raw::c_char;
 
 use std::collections::HashMap;
 
@@ -51,7 +50,6 @@ fn main() {
 struct TransCtx<'a> {
     builder: &'a mut Module,
     cfg: &'a cfg::CFG,
-    c_strings: Vec<CString>,
     procedure_fn_ty: FnType,
 }
 
@@ -82,30 +80,19 @@ fn trans(cfg: &cfg::CFG) {
 
     let procedure_fn_ty = builder.add_fn_type(None, vec![], Ty::none());
 
-    let c_strings = Vec::new();
     let mut ctx = TransCtx {
         builder: &mut builder,
         cfg,
-        c_strings,
         procedure_fn_ty,
     };
 
     ctx.builder.auto_drop();
 
-    unsafe {
-        let segments = vec![&FONT_SPRITES as *const u8 as *const c_char];
-        let segment_offsets = vec![ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))];
-        let segment_sizes = vec![FONT_SPRITES.len()];
-        ffi::BinaryenSetMemory(
-            module,
-            1,
-            1,
-            get_string(&mut ctx.c_strings, "mem".to_owned()),
-            segments.as_ptr() as _,
-            segment_offsets.as_ptr() as _,
-            segment_sizes.as_ptr() as _,
-            1,
-        );
+    {
+        let segment_data = &FONT_SPRITES;
+        let segment_offset_expr = ctx.builder.const_literal(Literal::I32(0));
+        let segments = vec![Segment::new(segment_data, segment_offset_expr)];
+        ctx.builder.set_memory(1, 1, Some(CString::new("mem").unwrap()), segments);
     }
 
     ctx.add_import("clear_screen", vec![], Ty::none());
@@ -608,13 +595,6 @@ const FONT_SPRITES: [u8; 80] = [
 
 const TMP_LOCAL: ffi::BinaryenIndex = 0;
 const LABEL_HELPER_LOCAL: ffi::BinaryenIndex = 1;
-
-fn get_string(c_strings: &mut Vec<CString>, string: String) -> *const c_char {
-    let c_string = CString::new(string).unwrap();
-    let c_string_ptr = c_string.as_ptr();
-    c_strings.push(c_string);
-    c_string_ptr
-}
 
 fn get_reg_name(reg: Reg) -> String {
     format!("V{}", reg.index())

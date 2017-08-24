@@ -60,6 +60,28 @@ impl Module {
         }
     }
 
+    pub fn set_memory(&mut self, initial: u32, maximal: u32, name: Option<CString>, segments: Vec<Segment>) {
+        let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
+        let mut segment_datas: Vec<_> = segments.iter().map(|s| s.data.as_ptr()).collect();
+        let mut segment_sizes: Vec<_> = segments.iter().map(|s| s.data.len() as u32).collect();
+        let segments_count = segments.len();
+
+        unsafe {
+            let mut segment_offsets: Vec<_> = segments.into_iter().map(|s| s.offset_expr.into_raw()).collect();
+
+            ffi::BinaryenSetMemory(
+                self.inner.module,
+                initial,
+                maximal,
+                name_ptr,
+                segment_datas.as_mut_ptr() as *mut *const c_char,
+                segment_offsets.as_mut_ptr(),
+                segment_sizes.as_mut_ptr(),
+                segments_count as _,
+            )
+        }
+    }
+
     pub fn add_fn_type(&self, name: Option<CString>, param_tys: Vec<ValueTy>, result_ty: Ty) -> FnType {
         let raw = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
@@ -285,6 +307,20 @@ impl Module {
             )
         };
         Expr::from_raw(self, raw_expr)
+    }
+}
+
+pub struct Segment<'a> {
+    data: &'a [u8],
+    offset_expr: Expr,
+}
+
+impl<'a> Segment<'a> {
+    pub fn new(data: &[u8], offset_expr: Expr) -> Segment {
+        Segment {
+            data,
+            offset_expr
+        }
     }
 }
 
