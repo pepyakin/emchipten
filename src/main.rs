@@ -96,7 +96,6 @@ impl<'a> TransCtx<'a> {
 
 fn trans(cfg: &cfg::CFG) {
     let module = unsafe { ffi::BinaryenModuleCreate() };
-    let param_types: Vec<ffi::BinaryenType> = vec![];
 
     let mut builder = Module::from_raw(module);
 
@@ -203,11 +202,9 @@ fn trans(cfg: &cfg::CFG) {
 }
 
 struct RoutineTransCtx<'t> {
-    module: ffi::BinaryenModuleRef, // should be 't eventually
     builder: &'t mut Module,
     routine_id: cfg::RoutineId,
     routine: &'t cfg::Routine,
-    c_strings: &'t mut Vec<CString>,
     procedure_fn_ty: &'t FnType,
 }
 
@@ -220,11 +217,9 @@ impl<'t> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
 
         RoutineTransCtx {
-            module: ctx.module,
             builder: builder,
             routine,
             routine_id,
-            c_strings: &mut ctx.c_strings,
             procedure_fn_ty: &ctx.procedure_fn_ty,
         }
     }
@@ -528,7 +523,6 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
                 stmts.push(store_vf_expr);
             }
-            _ => panic!(),
         }
     }
 
