@@ -17,7 +17,6 @@ use builder::*;
 pub use error::*;
 
 use std::fs::File;
-use std::ptr;
 use std::path::Path;
 use instruction::*;
 use binaryen::ffi;
@@ -268,7 +267,7 @@ impl<'t> RoutineTransCtx<'t> {
         let mut stmts = Vec::new();
 
         for inst in bb.instructions() {
-            unsafe { self.trans_instruction(inst, &mut stmts) };
+            self.trans_instruction(inst, &mut stmts);
         }
 
         if let cfg::Terminator::Ret = bb.terminator() {
@@ -278,7 +277,7 @@ impl<'t> RoutineTransCtx<'t> {
         self.builder.block(None, stmts, Ty::none())
     }
 
-    unsafe fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<Expr>) {
+    fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<Expr>) {
         match *instruction {
             Instruction::Call(addr) => {
                 let routine_name = CString::new(func_name_from_addr(addr)).unwrap();
@@ -401,7 +400,7 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    unsafe fn trans_apply(&mut self, vx: Reg, vy: Reg, f: Fun, stmts: &mut Vec<Expr>) {
+    fn trans_apply(&mut self, vx: Reg, vy: Reg, f: Fun, stmts: &mut Vec<Expr>) {
         let vx_expr = self.load_reg(vx);
         let vy_expr = self.load_reg(vy);
 
