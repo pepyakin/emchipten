@@ -17,6 +17,7 @@ use builder::*;
 pub use error::*;
 
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use instruction::*;
 use binaryen::ffi;
@@ -69,9 +70,7 @@ impl<'a> TransCtx<'a> {
 }
 
 fn trans(cfg: &cfg::CFG) {
-    let module = unsafe { ffi::BinaryenModuleCreate() };
-
-    let mut builder = Module::from_raw(module);
+    let mut builder = Module::new();
 
     let procedure_fn_ty = builder.add_fn_type(None, vec![], Ty::none());
 
@@ -148,21 +147,12 @@ fn trans(cfg: &cfg::CFG) {
     ctx.builder.optimize();
     ctx.builder.print();
 
-    unsafe {
-        let mut buf = Vec::<u8>::with_capacity(8192);
-        let written = ffi::BinaryenModuleWrite(module, std::mem::transmute(buf.as_mut_ptr()), 8192);
-        println!("written={}", written);
-        if written == buf.capacity() {
-            panic!("overflow?");
-        }
+    let buf = ctx.builder.write();
 
-        use std::io::Write;
+    let mut file = File::create("out.wasm").unwrap();
+    file.write_all(&buf).unwrap();
 
-        let mut file = File::create("out.wasm").unwrap();
-        file.write_all(&buf).unwrap();
-
-        println!("buf={:#?}", buf);
-    }
+    println!("buf={:#?}", buf);
 }
 
 struct RoutineTransCtx<'t> {
