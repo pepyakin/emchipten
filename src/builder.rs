@@ -94,7 +94,7 @@ impl Module {
                 fn_ty.inner,
                 var_tys_raw.as_mut_ptr(),
                 var_tys_raw.len() as _,
-                body.raw,
+                body.into_raw(),
             )
         };
         FnRef { inner }
@@ -108,15 +108,15 @@ impl Module {
                 name_ptr,
                 ty.into(),
                 mutable as c_int,
-                init.raw,
+                init.into_raw(),
             );
         }
     }
 
     // TODO: undefined ty?
     // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
-    pub fn block(&mut self, name: CString, mut children: Vec<Expr>, ty: Ty) -> Expr {
-        let name_ptr = self.save_string_and_return_ptr(name);
+    pub fn block(&mut self, name: Option<CString>, mut children: Vec<Expr>, ty: Ty) -> Expr {
+        let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
 
         let raw_expr = unsafe {
             ffi::BinaryenBlock(
@@ -132,6 +132,71 @@ impl Module {
 
     pub fn const_literal(&mut self, literal: Literal) -> Expr {
         let raw_expr = unsafe { ffi::BinaryenConst(self.inner.module, literal.into()) };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn load(&mut self, bytes: u32, signed: bool, offset: u32, align: u32, ty: ValueTy, ptr: Expr) -> Expr {
+        let raw_expr = unsafe { 
+            ffi::BinaryenLoad(
+                self.inner.module, 
+                bytes, 
+                signed as i8,
+                offset, 
+                align, 
+                ty.into(),
+                ptr.into_raw()
+            ) 
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn store(&mut self, bytes: u32, offset: u32, align: u32, ptr: Expr, value: Expr, ty: ValueTy) -> Expr {
+        let raw_expr = unsafe { 
+            ffi::BinaryenStore(
+                self.inner.module, 
+                bytes, 
+                offset, 
+                align, 
+                ptr.into_raw(),
+                value.into_raw(),
+                ty.into()
+            ) 
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn get_global(&mut self, name: CString, ty: ValueTy) -> Expr {
+        let global_name_ptr = self.save_string_and_return_ptr(name);
+        let raw_expr = unsafe { ffi::BinaryenGetGlobal(self.inner.module, global_name_ptr, ty.into()) };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn set_global(&mut self, name: CString, value: Expr) -> Expr {
+        let global_name_ptr = self.save_string_and_return_ptr(name);
+        let raw_expr = unsafe { ffi::BinaryenSetGlobal(self.inner.module, global_name_ptr, value.into_raw()) };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn ret(&mut self, value: Option<Expr>) -> Expr {
+        let raw_value = value.map_or(ptr::null_mut(), |v| v.into_raw());
+        let raw_expr = unsafe {
+            ffi::BinaryenReturn(self.inner.module, raw_value)
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn call_import(&mut self, name: CString, operands: Vec<Expr>, ty: Ty) -> Expr {
+        let name_ptr = self.save_string_and_return_ptr(name);
+        let mut operands_raw: Vec<_> = operands.into_iter().map(|ty| ty.into_raw()).collect();
+        let raw_expr = unsafe {
+            ffi::BinaryenCallImport(
+                self.inner.module,
+                name_ptr,
+                operands_raw.as_mut_ptr(),
+                operands_raw.len() as _,
+                ty.into(),
+            )
+        };
         Expr::from_raw(self, raw_expr)
     }
 }

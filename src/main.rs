@@ -297,28 +297,17 @@ impl<'t> RoutineTransCtx<'t> {
         }
 
         if let cfg::Terminator::Ret = bb.terminator() {
-            unsafe {
-                stmts.push(ffi::BinaryenReturn(self.module, ptr::null_mut()));
-            }
+            stmts.push(self.builder.ret(None));
         }
 
-        let raw_expr = unsafe {
-            ffi::BinaryenBlock(
-                self.module,
-                ptr::null_mut(),
-                stmts.as_ptr() as _,
-                stmts.len() as _,
-                ffi::BinaryenNone(),
-            )
-        };
-
-        Expr::from_raw(self.builder, raw_expr)
+        let exprs = stmts.into_iter().map(|s| Expr::from_raw(self.builder, s)).collect();
+        self.builder.block(None, exprs, Ty::none())
     }
 
     unsafe fn trans_instruction(
         &mut self,
         instruction: &Instruction,
-        stmts: &mut Vec<ffi::BinaryenExpressionRef>,
+        stmts: &mut Vec<Expr>,
     ) {
         match *instruction {
             Instruction::Call(addr) => {
@@ -337,7 +326,7 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Instruction::ClearScreen => {
                 let clear_expr =
-                    self.trans_call_import("clear_screen", vec![], ffi::BinaryenNone());
+                    self.trans_call_import("clear_screen", vec![], Ty::none());
                 stmts.push(clear_expr);
             }
             Instruction::PutImm { vx, imm } => {
@@ -355,7 +344,7 @@ impl<'t> RoutineTransCtx<'t> {
                 self.trans_apply(vx, vy, f, stmts);
             }
             Instruction::Randomize { vx, imm } => {
-                let rnd_expr = self.trans_call_import("random", vec![], ffi::BinaryenInt32());
+                let rnd_expr = self.trans_call_import("random", vec![], Ty::value(ValueTy::I32));
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
                 let mask_expr = ffi::BinaryenBinary(
                     self.module,
@@ -372,7 +361,7 @@ impl<'t> RoutineTransCtx<'t> {
                 let n_expr = self.load_imm(n.0 as u32);
 
                 let operands = vec![x_expr, y_expr, n_expr];
-                let draw_expr = self.trans_call_import("draw", operands, ffi::BinaryenInt32());
+                let draw_expr = self.trans_call_import("draw", operands, Ty::value(ValueTy::I32));
                 let store_expr = self.store_reg(Reg::Vf, draw_expr);
 
                 stmts.push(store_expr);
@@ -392,27 +381,27 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_i_expr);
             }
             Instruction::GetDT(vx) => {
-                let get_dt_expr = self.trans_call_import("get_dt", vec![], ffi::BinaryenInt32());
+                let get_dt_expr = self.trans_call_import("get_dt", vec![], Ty::value(ValueTy::I32));
                 let store_expr = self.store_reg(vx, get_dt_expr);
                 stmts.push(store_expr);
             }
             Instruction::SetST(vx) => {
                 let load_expr = self.load_reg(vx);
                 let set_st_expr =
-                    self.trans_call_import("set_st", vec![load_expr], ffi::BinaryenNone());
+                    self.trans_call_import("set_st", vec![load_expr], Ty::none());
                 // TODO: Drop?
                 stmts.push(set_st_expr);
             }
             Instruction::SetDT(vx) => {
                 let load_expr = self.load_reg(vx);
                 let set_dt_expr =
-                    self.trans_call_import("set_dt", vec![load_expr], ffi::BinaryenNone());
+                    self.trans_call_import("set_dt", vec![load_expr], Ty::none());
                 // TODO: Drop?
                 stmts.push(set_dt_expr);
             }
             Instruction::WaitKey(vx) => {
                 let wait_key_expr =
-                    self.trans_call_import("wait_key", vec![], ffi::BinaryenInt32());
+                    self.trans_call_import("wait_key", vec![], Ty::value(ValueTy::I32));
                 let store_expr = self.store_reg(vx, wait_key_expr);
                 stmts.push(store_expr);
             }
@@ -486,7 +475,7 @@ impl<'t> RoutineTransCtx<'t> {
         vx: Reg,
         vy: Reg,
         f: Fun,
-        stmts: &mut Vec<ffi::BinaryenExpressionRef>,
+        stmts: &mut Vec<Expr>,
     ) {
         let vx_expr = self.load_reg(vx);
         let vy_expr = self.load_reg(vy);
@@ -638,23 +627,11 @@ impl<'t> RoutineTransCtx<'t> {
     fn trans_call_import(
         &mut self,
         name: &str,
-        operands: Vec<ffi::BinaryenExpressionRef>,
-        result_ty: ffi::BinaryenType,
-    ) -> ffi::BinaryenExpressionRef {
-        // TODO: Optimize
-        unsafe {
-            let fn_name = CString::new(name).unwrap();
-            let fn_name_ptr = fn_name.as_ptr();
-            self.c_strings.push(fn_name);
-
-            ffi::BinaryenCallImport(
-                self.module,
-                fn_name_ptr,
-                operands.as_ptr() as _,
-                operands.len() as _,
-                result_ty,
-            )
-        }
+        operands: Vec<Expr>,
+        result_ty: Ty,
+    ) -> Expr {
+        let fn_name = CString::new(name).unwrap();
+        self.builder.call_import(fn_name, operands, result_ty)
     }
 
     fn trans_predicate(&mut self, predicate: Predicate) -> ffi::BinaryenExpressionRef {
@@ -672,7 +649,7 @@ impl<'t> RoutineTransCtx<'t> {
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let pressed_expr = unsafe {
-                    self.trans_call_import("is_key_pressed", vec![vx_expr], ffi::BinaryenInt32())
+                    self.trans_call_import("is_key_pressed", vec![vx_expr], Ty::value(ValueTy::I32))
                 };
                 (pressed_expr, self.load_imm(1))
             }
@@ -686,50 +663,40 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn load_i(&mut self) -> ffi::BinaryenExpressionRef {
-        unsafe {
-            let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
-            ffi::BinaryenGetGlobal(self.module, reg_name_ptr, ffi::BinaryenInt32())
-        }
+    fn load_i(&mut self) -> Expr {
+        self.builder.get_global(CString::from("regI").unwrap(), ValueTy::I32)
     }
 
-    fn store_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
-        unsafe {
-            let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
-            ffi::BinaryenSetGlobal(self.module, reg_name_ptr, value)
-        }
+    fn store_i(&mut self, value: Expr) -> Expr {
+        self.builder.set_global(CString::from("regI").unwrap(), value)
     }
 
-    fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
-        unsafe {
-            let reg_name_ptr = get_string(&mut self.c_strings, get_reg_name(reg));
-            ffi::BinaryenGetGlobal(self.module, reg_name_ptr, ffi::BinaryenInt32())
-        }
+    fn load_reg(&mut self, reg: Reg) -> Expr {
+        let reg_name = get_reg_name(reg);
+        self.builder.get_global(CString::from(reg_name).unwrap(), ValueTy::I32)
     }
 
     fn store_reg(
         &mut self,
         reg: Reg,
-        value: ffi::BinaryenExpressionRef,
-    ) -> ffi::BinaryenExpressionRef {
-        unsafe {
-            let reg_name_ptr = get_string(&mut self.c_strings, get_reg_name(reg));
-            ffi::BinaryenSetGlobal(self.module, reg_name_ptr, value)
-        }
+        value: Expr,
+    ) -> Expr {
+        let reg_name = get_reg_name(reg);
+        self.builder.set_global(CString::from(reg_name).unwrap(), value)
     }
 
-    fn load_imm(&mut self, c: u32) -> ffi::BinaryenExpressionRef {
-        unsafe { ffi::BinaryenConst(self.module, ffi::BinaryenLiteralInt32(c as i32)) }
+    fn load_imm(&mut self, c: u32) -> Expr {
+        self.builder.const_literal(Literal::I32(c))
     }
 
-    fn load_mem_at_i(&mut self) -> ffi::BinaryenExpressionRef {
+    fn load_mem_at_i(&mut self) -> Expr {
         let i_expr = self.load_i();
-        unsafe { ffi::BinaryenLoad(self.module, 1, 0, 0, 0, ffi::BinaryenInt32(), i_expr) }
+        self.builder.load(1, false, 0, 0, ValueTy::I32, i_expr)
     }
 
-    fn store_mem_at_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
+    fn store_mem_at_i(&mut self, value: Expr) -> Expr {
         let i_expr = self.load_i();
-        unsafe { ffi::BinaryenStore(self.module, 1, 0, 0, i_expr, value, ffi::BinaryenInt32()) }
+        self.builder.store(1, 0, 0, i_expr, value, ValueTy::I32)
     }
 }
 
