@@ -195,16 +195,39 @@ impl Module {
         Expr::from_raw(self, raw_expr)
     }
 
+    pub fn get_local(&mut self, index: u32, ty: ValueTy) -> Expr {
+        let raw_expr = unsafe { 
+            ffi::BinaryenGetLocal(self.inner.module, index as ffi::BinaryenIndex, ty.into()) 
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn set_local(&mut self, index: u32, value: Expr) -> Expr {
+        let raw_expr = unsafe { 
+            ffi::BinaryenSetLocal(self.inner.module, index as ffi::BinaryenIndex, value.into_raw()) 
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
+    pub fn tee_local(&mut self, index: u32, value: Expr) -> Expr {
+        let raw_expr = unsafe { 
+            ffi::BinaryenTeeLocal(self.inner.module, index as ffi::BinaryenIndex, value.into_raw()) 
+        };
+        Expr::from_raw(self, raw_expr)
+    }
+
     pub fn ret(&mut self, value: Option<Expr>) -> Expr {
-        let raw_value = value.map_or(ptr::null_mut(), |v| v.into_raw());
-        let raw_expr = unsafe { ffi::BinaryenReturn(self.inner.module, raw_value) };
+        let raw_expr = unsafe { 
+            let raw_value = value.map_or(ptr::null_mut(), |v| v.into_raw());
+            ffi::BinaryenReturn(self.inner.module, raw_value) 
+        };
         Expr::from_raw(self, raw_expr)
     }
 
     pub fn call(&mut self, name: CString, operands: Vec<Expr>) -> Expr {
         let name_ptr = self.save_string_and_return_ptr(name);
-        let mut operands_raw: Vec<_> = operands.into_iter().map(|ty| ty.into_raw()).collect();
         let raw_expr = unsafe {
+            let mut operands_raw: Vec<_> = operands.into_iter().map(|ty| ty.into_raw()).collect();
             ffi::BinaryenCall(
                 self.inner.module,
                 name_ptr,
@@ -218,8 +241,8 @@ impl Module {
 
     pub fn call_import(&mut self, name: CString, operands: Vec<Expr>, ty: Ty) -> Expr {
         let name_ptr = self.save_string_and_return_ptr(name);
-        let mut operands_raw: Vec<_> = operands.into_iter().map(|ty| ty.into_raw()).collect();
         let raw_expr = unsafe {
+            let mut operands_raw: Vec<_> = operands.into_iter().map(|ty| ty.into_raw()).collect();
             ffi::BinaryenCallImport(
                 self.inner.module,
                 name_ptr,

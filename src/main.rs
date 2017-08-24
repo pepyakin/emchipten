@@ -258,7 +258,6 @@ impl<'t> RoutineTransCtx<'t> {
                     skip,
                 } => {
                     let predicate_expr = self.trans_predicate(predicate);
-                    let predicate_expr = Expr::from_raw(self.builder, predicate_expr);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
@@ -455,15 +454,14 @@ impl<'t> RoutineTransCtx<'t> {
                 // $overflow = (tmp != result)
 
                 let add_expr = self.builder.binary(BinaryOp::AddInt32, vx_expr, vy_expr);
-                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
                 let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
-                let load_tmp_expr =
-                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
                 let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
@@ -472,15 +470,14 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Fun::Subtract => {
                 let add_expr = self.builder.binary(BinaryOp::SubInt32, vx_expr, vy_expr);
-                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
                 let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
-                let load_tmp_expr =
-                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
                 let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
@@ -495,22 +492,22 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
-                // TODO: It is OK to use same expr twice???
+                let vy_expr = self.load_reg(vy);
+                let imm_1_expr = self.load_imm(1);
                 let mask_expr = self.builder.binary(BinaryOp::AndInt32, vy_expr, imm_1_expr);
                 let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
                 stmts.push(store_vf_expr);
             }
             Fun::SubtractInv => {
                 let add_expr = self.builder.binary(BinaryOp::SubInt32, vy_expr, vx_expr);
-                let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
+                let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
                 let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
-                let load_tmp_expr =
-                    ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
+                let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
                 let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
@@ -525,7 +522,8 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
-                // TODO: It is OK to use same expr twice???
+                let imm_1_expr = self.load_imm(1);
+                let vy_expr = self.load_reg(vy);
                 let mask_expr = self.builder.binary(BinaryOp::ShlInt32, vy_expr, imm_1_expr);
                 let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
                 stmts.push(store_vf_expr);
@@ -553,9 +551,7 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
-                let pressed_expr = unsafe {
-                    self.trans_call_import("is_key_pressed", vec![vx_expr], Ty::value(ValueTy::I32))
-                };
+                let pressed_expr = self.trans_call_import("is_key_pressed", vec![vx_expr], Ty::value(ValueTy::I32));
                 (pressed_expr, self.load_imm(1))
             }
         };
@@ -568,14 +564,14 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn load_i(&mut self) -> Expr {
         self.builder.get_global(
-            CString::from("regI").unwrap(),
+            CString::new("regI").unwrap(),
             ValueTy::I32,
         )
     }
 
     fn store_i(&mut self, value: Expr) -> Expr {
         self.builder.set_global(
-            CString::from("regI").unwrap(),
+            CString::new("regI").unwrap(),
             value,
         )
     }
@@ -583,7 +579,7 @@ impl<'t> RoutineTransCtx<'t> {
     fn load_reg(&mut self, reg: Reg) -> Expr {
         let reg_name = get_reg_name(reg);
         self.builder.get_global(
-            CString::from(reg_name).unwrap(),
+            CString::new(reg_name).unwrap(),
             ValueTy::I32,
         )
     }
@@ -591,7 +587,7 @@ impl<'t> RoutineTransCtx<'t> {
     fn store_reg(&mut self, reg: Reg, value: Expr) -> Expr {
         let reg_name = get_reg_name(reg);
         self.builder.set_global(
-            CString::from(reg_name).unwrap(),
+            CString::new(reg_name).unwrap(),
             value,
         )
     }
