@@ -1,4 +1,4 @@
-use super::{Result, ErrorKind};
+use super::{ErrorKind, Result};
 
 #[derive(Debug, Copy, Clone)]
 pub struct InstructionWord(pub u16);
@@ -90,28 +90,28 @@ enum_from_primitive! {
 pub enum Fun {
     // 8xy0 - LD Vx, Vy
     Id = 0x0,
-    
-    // 8xy1 - OR Vx, Vy 
+
+    // 8xy1 - OR Vx, Vy
     Or = 0x1,
-    
+
     // 8xy2 - AND Vx, Vy
     And = 0x2,
-    
+
     // 8xy3 - XOR Vx, Vy
     Xor = 0x3,
-    
+
     // 8xy4 - ADD Vx, Vy
     Add = 0x4,
-    
+
     // 8xy5 - SUB Vx, Vy
-    Subtract = 0x5, 
-    
+    Subtract = 0x5,
+
     // 8xy6 - SHR Vx {, Vy}
     ShiftRight = 0x6,
-    
+
     // 8xy7 - SUBN Vx, Vy
     SubtractInv = 0x7,
-    
+
     // 8xyE - SHL Vx {, Vy}
     ShiftLeft = 0xE
 }
@@ -215,110 +215,80 @@ impl Instruction {
         use self::Instruction::*;
 
         let insn = match iw.op() {
-            0x0 => {
-                match iw.kk() {
-                    0xE0 => ClearScreen,
-                    0xEE => Ret,
-                    _ => Sys(iw.addr()),
-                }
-            }
+            0x0 => match iw.kk() {
+                0xE0 => ClearScreen,
+                0xEE => Ret,
+                _ => Sys(iw.addr()),
+            },
             0x1 => Jump(iw.addr()),
             0x2 => Call(iw.addr()),
-            0x3 => {
-                Skip(Predicate {
-                    cmp: Cmp::Eq,
-                    cond: Condition::Imm(iw.x_reg(), iw.imm()),
-                })
-            }
-            0x4 => {
-                Skip(Predicate {
-                    cmp: Cmp::Ne,
-                    cond: Condition::Imm(iw.x_reg(), iw.imm()),
-                })
-            }
-            0x5 => {
-                Skip(Predicate {
-                    cmp: Cmp::Eq,
-                    cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
-                })
-            }
-            0x9 => {
-                Skip(Predicate {
-                    cmp: Cmp::Ne,
-                    cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
-                })
-            }
-            0x6 => {
-                PutImm {
-                    vx: iw.x_reg(),
-                    imm: iw.imm(),
-                }
-            }
-            0x7 => {
-                AddImm {
-                    vx: iw.x_reg(),
-                    imm: iw.imm(),
-                }
-            }
-            0x8 => {
-                Apply {
-                    vx: iw.x_reg(),
-                    vy: iw.y_reg(),
-                    f: {
-                        use enum_primitive::FromPrimitive;
+            0x3 => Skip(Predicate {
+                cmp: Cmp::Eq,
+                cond: Condition::Imm(iw.x_reg(), iw.imm()),
+            }),
+            0x4 => Skip(Predicate {
+                cmp: Cmp::Ne,
+                cond: Condition::Imm(iw.x_reg(), iw.imm()),
+            }),
+            0x5 => Skip(Predicate {
+                cmp: Cmp::Eq,
+                cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
+            }),
+            0x9 => Skip(Predicate {
+                cmp: Cmp::Ne,
+                cond: Condition::Reg(iw.x_reg(), iw.y_reg()),
+            }),
+            0x6 => PutImm {
+                vx: iw.x_reg(),
+                imm: iw.imm(),
+            },
+            0x7 => AddImm {
+                vx: iw.x_reg(),
+                imm: iw.imm(),
+            },
+            0x8 => Apply {
+                vx: iw.x_reg(),
+                vy: iw.y_reg(),
+                f: {
+                    use enum_primitive::FromPrimitive;
 
-                        Fun::from_u8(iw.n()).ok_or_else(
-                            || ErrorKind::UnrecognizedInstruction(iw),
-                        )?
-                    },
-                }
-            }
+                    Fun::from_u8(iw.n()).ok_or_else(|| ErrorKind::UnrecognizedInstruction(iw))?
+                },
+            },
             0xA => SetI(iw.addr()),
             0xB => JumpPlusV0(iw.addr()),
-            0xC => {
-                Randomize {
-                    vx: iw.x_reg(),
-                    imm: iw.imm(),
-                }
-            }
-            0xD => {
-                Draw {
-                    vx: iw.x_reg(),
-                    vy: iw.y_reg(),
-                    n: iw.imm4(),
-                }
-            }
-            0xE => {
-                match iw.kk() {
-                    0x9E => {
-                        Skip(Predicate {
-                            cmp: Cmp::Eq,
-                            cond: Condition::Pressed(iw.x_reg()),
-                        })
-                    }
-                    0xA1 => {
-                        Skip(Predicate {
-                            cmp: Cmp::Ne,
-                            cond: Condition::Pressed(iw.x_reg()),
-                        })
-                    }
-                    _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
-                }
-            }
-            0xF => {
-                match iw.kk() {
-                    0x07 => GetDT(iw.x_reg()),
-                    0x0A => WaitKey(iw.x_reg()),
-                    0x15 => SetDT(iw.x_reg()),
-                    0x18 => SetST(iw.x_reg()),
-                    0x1E => AddI(iw.x_reg()),
-                    0x29 => LoadGlyph(iw.x_reg()),
-                    0x33 => StoreBCD(iw.x_reg()),
-                    0x55 => StoreRegs(iw.x_reg()),
-                    0x65 => LoadRegs(iw.x_reg()),
-                    _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
-                }
-            }
+            0xC => Randomize {
+                vx: iw.x_reg(),
+                imm: iw.imm(),
+            },
+            0xD => Draw {
+                vx: iw.x_reg(),
+                vy: iw.y_reg(),
+                n: iw.imm4(),
+            },
+            0xE => match iw.kk() {
+                0x9E => Skip(Predicate {
+                    cmp: Cmp::Eq,
+                    cond: Condition::Pressed(iw.x_reg()),
+                }),
+                0xA1 => Skip(Predicate {
+                    cmp: Cmp::Ne,
+                    cond: Condition::Pressed(iw.x_reg()),
+                }),
+                _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
+            },
+            0xF => match iw.kk() {
+                0x07 => GetDT(iw.x_reg()),
+                0x0A => WaitKey(iw.x_reg()),
+                0x15 => SetDT(iw.x_reg()),
+                0x18 => SetST(iw.x_reg()),
+                0x1E => AddI(iw.x_reg()),
+                0x29 => LoadGlyph(iw.x_reg()),
+                0x33 => StoreBCD(iw.x_reg()),
+                0x55 => StoreRegs(iw.x_reg()),
+                0x65 => LoadRegs(iw.x_reg()),
+                _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
+            },
             _ => bail!(ErrorKind::UnrecognizedInstruction(iw)),
         };
         Ok(insn)

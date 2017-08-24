@@ -29,9 +29,7 @@ impl Module {
     }
 
     pub fn new() -> Module {
-        let raw = unsafe {
-            ffi::BinaryenModuleCreate()
-        };
+        let raw = unsafe { ffi::BinaryenModuleCreate() };
         Module::from_raw(raw)
     }
 
@@ -75,7 +73,7 @@ impl Module {
         };
         println!("written={}", written);
         if written == buf.capacity() {
-            // TODO: 
+            // TODO:
             panic!("unimplemented");
         }
 

@@ -95,9 +95,9 @@ impl<'a> SubroutineBuilder<'a> {
     }
 
     fn find_bb(&self, pc: usize) -> Option<usize> {
-        self.bbs.iter().position(|bb| {
-            bb.start <= pc && bb.end >= pc
-        })
+        self.bbs
+            .iter()
+            .position(|bb| bb.start <= pc && bb.end >= pc)
     }
 
     fn build_bb(&mut self, seen_calls: &mut HashSet<Addr>, mut pc: usize) -> Result<()> {
@@ -165,7 +165,9 @@ impl<'a> SubroutineBuilder<'a> {
                         insts,
                         leader,
                         pc,
-                        Terminator::Jump { target: BasicBlockId(Addr(jump_pc as u16)) },
+                        Terminator::Jump {
+                            target: BasicBlockId(Addr(jump_pc as u16)),
+                        },
                     );
                     self.build_bb(seen_calls, jump_pc)?;
                     break;
