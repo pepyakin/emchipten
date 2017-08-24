@@ -1,51 +1,62 @@
 use binaryen::ffi;
-use std::marker::PhantomData;
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::os::raw::{c_char, c_int};
 use std::ptr;
 
+struct InnerModule {
+    module: ffi::BinaryenModuleRef,
+    c_strings: RefCell<Vec<CString>>,
+}
+
+impl Drop for InnerModule {
+    fn drop(&mut self) {
+        unsafe { ffi::BinaryenModuleDispose(self.module) }
+    }
+}
+
 pub struct Module {
-    pub module: ffi::BinaryenModuleRef,
-    c_strings: Rc<RefCell<Vec<CString>>>,
+    inner: Rc<InnerModule>
 }
 
 impl Module {
     pub fn from_raw(module: ffi::BinaryenModuleRef) -> Module {
         Module {
-            module,
-            c_strings: Rc::new(RefCell::new(Vec::new()))
+            inner: Rc::new(InnerModule {
+                module,
+                c_strings: RefCell::new(Vec::new())
+            })
         }
     }
 
     pub fn auto_drop(&mut self) {
         unsafe {
-            ffi::BinaryenModuleAutoDrop(self.module);
+            ffi::BinaryenModuleAutoDrop(self.inner.module);
         }
     }
 
     pub fn optimize(&mut self) {
         unsafe { 
-            ffi::BinaryenModuleOptimize(self.module) 
+            ffi::BinaryenModuleOptimize(self.inner.module) 
         }
     }
 
     pub fn is_valid(&mut self) -> bool {
         unsafe {
-            ffi::BinaryenModuleValidate(self.module) == 1
+            ffi::BinaryenModuleValidate(self.inner.module) == 1
         }
     }
 
     pub fn print(&self) {
         unsafe {
-            ffi::BinaryenModulePrint(self.module)
+            ffi::BinaryenModulePrint(self.inner.module)
         }
     }
 
     pub fn set_start(&mut self, fn_ref: &FnRef) {
         unsafe {
-            ffi::BinaryenSetStart(self.module, fn_ref.inner);
+            ffi::BinaryenSetStart(self.inner.module, fn_ref.inner);
         }
     }
 
@@ -53,7 +64,7 @@ impl Module {
         let inner = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
             ffi::BinaryenAddFunctionType(
-                self.module,
+                self.inner.module,
                 name_ptr,
                 ty.into(),
                 param_tys.as_ptr() as _,
@@ -67,20 +78,20 @@ impl Module {
 
     fn save_string_and_return_ptr(&self, string: CString) -> *const c_char {
         let str_ptr = string.as_ptr();
-        self.c_strings.borrow_mut().push(string);
+        self.inner.c_strings.borrow_mut().push(string);
         str_ptr
     }
 
-    pub fn new_fn<'a>(&'a self, name: CString, fn_ty: &FnType, var_tys: Vec<ValueTy>, body: Expr<'a>) -> FnRef {
+    pub fn new_fn(&self, name: CString, fn_ty: &FnType, var_tys: Vec<ValueTy>, body: Expr) -> FnRef {
         let inner = unsafe {
             let name_ptr = self.save_string_and_return_ptr(name);
             ffi::BinaryenAddFunction(
-                self.module,
+                self.inner.module,
                 name_ptr,
                 fn_ty.inner,
                 var_tys.as_ptr() as _,
                 var_tys.len() as _,
-                body.inner
+                body.raw
             )
         };
         FnRef {
@@ -88,34 +99,35 @@ impl Module {
         }
     }
 
-    pub fn new_global<'a>(&'a self, name: CString, ty: ValueTy, mutable: bool, init: Expr<'a>) {
+    pub fn new_global(&self, name: CString, ty: ValueTy, mutable: bool, init: Expr) {
         let name_ptr = self.save_string_and_return_ptr(name);
         unsafe {
             ffi::BinaryenAddGlobal(
-                self.module, 
+                self.inner.module, 
                 name_ptr,
                 ty.into(),
                 mutable as c_int,
-                init.inner
+                init.raw
             );
         }
     }
 
     // TODO: undefined ty?
     // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
-    pub fn block<'a>(&'a mut self, name: CString, mut children: Vec<Expr<'a>>, ty: Ty) -> Expr<'a> {
+    pub fn block(&mut self, name: CString, mut children: Vec<Expr>, ty: Ty) -> Expr {
         let name_ptr = self.save_string_and_return_ptr(name);
 
         let raw_expr = unsafe {
-            ffi::BinaryenBlock(self.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
+            ffi::BinaryenBlock(self.inner.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
         };
-        Expr::from_raw(raw_expr)
+        Expr::from_raw(self, raw_expr)
     }
-}
 
-impl Drop for Module {
-    fn drop(&mut self) {
-        unsafe { ffi::BinaryenModuleDispose(self.module) }
+    pub fn const_literal(&mut self, literal: Literal) -> Expr {
+        let raw_expr = unsafe {
+            ffi::BinaryenConst(self.inner.module, literal.into())
+        };
+        Expr::from_raw(self, raw_expr)
     }
 }
 
@@ -173,21 +185,21 @@ impl From<Ty> for ffi::BinaryenType {
     }
 }
 
-pub struct Expr<'m> {
-    inner: ffi::BinaryenExpressionRef,
-    _module: PhantomData<&'m ()>
+pub struct Expr {
+    _module_ref: Rc<InnerModule>,
+    raw: ffi::BinaryenExpressionRef,
 }
 
-impl<'m> Expr<'m> {
-    pub fn from_raw<'b>(raw: ffi::BinaryenExpressionRef) -> Expr<'b> {
+impl Expr {
+    pub fn from_raw(module: &Module, raw: ffi::BinaryenExpressionRef) -> Expr {
         Expr {
-            inner: raw,
-            _module: PhantomData
+            _module_ref: Rc::clone(&module.inner),
+            raw
         }
     }
 
     pub unsafe fn into_raw(self) -> ffi::BinaryenExpressionRef {
-        self.inner
+        self.raw
     }
 }
 
@@ -227,9 +239,9 @@ impl Relooper {
         }
     }
 
-    pub fn add_block<'m>(&mut self, expr: Expr<'m>) -> RelooperBlockId {
+    pub fn add_block<'m>(&mut self, expr: Expr) -> RelooperBlockId {
         let inner = unsafe {
-            ffi::RelooperAddBlock(self.inner, expr.inner)
+            ffi::RelooperAddBlock(self.inner, expr.raw)
         };
         let index = self.blocks.len();
         self.blocks.push(inner);
@@ -237,21 +249,21 @@ impl Relooper {
         RelooperBlockId(index)
     }
 
-    pub fn render<'m>(self, module: &'m Module, entry: RelooperBlockId, label_helper: u32) -> Expr<'m> {
+    pub fn render(self, module: &Module, entry: RelooperBlockId, label_helper: u32) -> Expr {
         let entry = self.blocks[entry.0];
         let inner = unsafe {
-            ffi::RelooperRenderAndDispose(self.inner, entry, label_helper as _, module.module)
+            ffi::RelooperRenderAndDispose(self.inner, entry, label_helper as _, module.inner.module)
         };
-        Expr::from_raw(inner)
+        Expr::from_raw(module, inner)
     }
 
-    pub fn add_branch<'m>(&mut self, from: RelooperBlockId, to: RelooperBlockId, condition: Option<Expr<'m>>, code: Option<Expr<'m>>) {
+    pub fn add_branch<'m>(&mut self, from: RelooperBlockId, to: RelooperBlockId, condition: Option<Expr>, code: Option<Expr>) {
         let from_block = self.blocks[from.0];
         let to_block = self.blocks[to.0];
 
         unsafe {
-            let condition_ptr = condition.map_or(ptr::null_mut(), |e| e.inner);
-            let code_ptr = code.map_or(ptr::null_mut(), |e| e.inner);
+            let condition_ptr = condition.map_or(ptr::null_mut(), |e| e.raw);
+            let code_ptr = code.map_or(ptr::null_mut(), |e| e.raw);
             ffi::RelooperAddBranch(from_block as _, to_block as _, condition_ptr, code_ptr)
         }
     }

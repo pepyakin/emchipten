@@ -134,14 +134,6 @@ fn trans(cfg: &cfg::CFG) {
         ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("wait_key", vec![], ffi::BinaryenInt32());
 
-        ffi::BinaryenAddGlobal(
-            module, 
-            get_string(&mut ctx.c_strings, "regI".to_string()),
-            ffi::BinaryenInt32(),
-            1,
-            ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
-        );
-
         for i in 0..16 {
             let reg = Reg::from_index(i);
             let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
@@ -154,6 +146,25 @@ fn trans(cfg: &cfg::CFG) {
             );
         }
     }
+
+    {
+        let init = builder.const_literal(Literal::I32(0));
+        builder.new_global(CString::new("regI").unwrap(), ValueTy::I32, true, init);
+    }
+
+    // for i in 0..16 {
+    //     let reg = Reg::from_index(i);
+    //     let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
+    //     ffi::BinaryenAddGlobal(
+    //         module, 
+    //         reg_name_ptr,
+    //         ffi::BinaryenInt32(),
+    //         1,
+    //         ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
+    //     );
+    // }
+
+    
 
     let mut binaryen_routines = HashMap::new();
     let subroutines = ctx.cfg.subroutines().keys();
@@ -241,10 +252,11 @@ impl<'t> RoutineTransCtx<'t> {
                 },
                 Skip { predicate, next, skip } => {
                     let predicate_expr = self.trans_predicate(predicate);
+                    let predicate_expr = Expr::from_raw(self.builder, predicate_expr);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
-                    relooper.add_branch(from_relooper_block, skip_relooper_block, Some(Expr::from_raw(predicate_expr)), None);
+                    relooper.add_branch(from_relooper_block, skip_relooper_block, Some(predicate_expr), None);
                     relooper.add_branch(from_relooper_block, next_relooper_block, None, None);
                 },
             }
@@ -265,7 +277,7 @@ impl<'t> RoutineTransCtx<'t> {
         )
     }
 
-    fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> Expr<'t> {
+    fn trans_bb(&mut self, bb_id: cfg::BasicBlockId) -> Expr {
         let bb = &self.routine.bbs[&bb_id];
 
         println!("{:#?}", bb);
@@ -292,7 +304,7 @@ impl<'t> RoutineTransCtx<'t> {
             )
         };
         
-        Expr::from_raw(raw_expr)
+        Expr::from_raw(self.builder, raw_expr)
     }
 
     unsafe fn trans_instruction(
