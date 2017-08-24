@@ -21,6 +21,12 @@ pub struct Module {
 }
 
 impl Module {
+    fn save_string_and_return_ptr(&self, string: CString) -> *const c_char {
+        let str_ptr = string.as_ptr();
+        self.inner.c_strings.borrow_mut().push(string);
+        str_ptr
+    }
+
     pub fn from_raw(module: ffi::BinaryenModuleRef) -> Module {
         Module {
             inner: Rc::new(InnerModule {
@@ -57,7 +63,10 @@ impl Module {
     pub fn new_fn_type(&self, name: Option<CString>, ty: Ty, param_tys: Vec<ValueTy>) -> FnType {
         let inner = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
-            let mut param_tys_raw = param_tys.into_iter().map(|ty| ty.into()).collect::<Vec<_>>();
+            let mut param_tys_raw = param_tys
+                .into_iter()
+                .map(|ty| ty.into())
+                .collect::<Vec<_>>();
             ffi::BinaryenAddFunctionType(
                 self.inner.module,
                 name_ptr,
@@ -67,12 +76,6 @@ impl Module {
             )
         };
         FnType { inner }
-    }
-
-    fn save_string_and_return_ptr(&self, string: CString) -> *const c_char {
-        let str_ptr = string.as_ptr();
-        self.inner.c_strings.borrow_mut().push(string);
-        str_ptr
     }
 
     pub fn new_fn(
