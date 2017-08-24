@@ -60,8 +60,8 @@ impl Module {
         }
     }
 
-    pub fn new_fn_type(&self, name: Option<CString>, ty: Ty, param_tys: Vec<ValueTy>) -> FnType {
-        let inner = unsafe {
+    pub fn add_fn_type(&self, name: Option<CString>, param_tys: Vec<ValueTy>, result_ty: Ty) -> FnType {
+        let raw = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
             let mut param_tys_raw = param_tys
                 .into_iter()
@@ -70,12 +70,12 @@ impl Module {
             ffi::BinaryenAddFunctionType(
                 self.inner.module,
                 name_ptr,
-                ty.into(),
+                result_ty.into(),
                 param_tys_raw.as_mut_ptr(),
                 param_tys_raw.len() as _,
             )
         };
-        FnType { inner }
+        FnType { raw }
     }
 
     pub fn new_fn(
@@ -91,7 +91,7 @@ impl Module {
             ffi::BinaryenAddFunction(
                 self.inner.module,
                 name_ptr,
-                fn_ty.inner,
+                fn_ty.raw,
                 var_tys_raw.as_mut_ptr(),
                 var_tys_raw.len() as _,
                 body.into_raw(),
@@ -109,6 +109,27 @@ impl Module {
                 ty.into(),
                 mutable as c_int,
                 init.into_raw(),
+            );
+        }
+    }
+
+    pub fn add_import(
+        &mut self,
+        internal_name: CString,
+        external_module_name: CString,
+        external_base_name: CString,
+        fn_ty: &FnType,
+    ) {
+        let internal_name_ptr = self.save_string_and_return_ptr(internal_name);
+        let external_module_name_ptr = self.save_string_and_return_ptr(external_module_name);
+        let external_base_name_ptr = self.save_string_and_return_ptr(external_base_name);
+        unsafe {
+            ffi::BinaryenAddImport(
+                self.inner.module, 
+                internal_name_ptr,
+                external_module_name_ptr, 
+                external_base_name_ptr, 
+                fn_ty.raw
             );
         }
     }
@@ -529,7 +550,7 @@ impl From<BinaryOp> for ffi::BinaryenOp {
 // TODO: Host
 
 pub struct FnType {
-    inner: ffi::BinaryenFunctionTypeRef,
+    raw: ffi::BinaryenFunctionTypeRef,
 }
 
 pub struct FnRef {

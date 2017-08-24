@@ -50,47 +50,29 @@ fn main() {
 }
 
 struct TransCtx<'a> {
-    module: ffi::BinaryenModuleRef,
+    builder: &'a mut Module,
     cfg: &'a cfg::CFG,
     c_strings: Vec<CString>,
     procedure_fn_ty: FnType,
-}
-
-impl<'a> Drop for TransCtx<'a> {
-    fn drop(&mut self) {
-        unsafe { ffi::BinaryenModuleDispose(self.module) }
-    }
 }
 
 impl<'a> TransCtx<'a> {
     fn add_import(
         &mut self,
         name: &str,
-        param_types: Vec<ffi::BinaryenType>,
-        return_ty: ffi::BinaryenType,
+        param_tys: Vec<ValueTy>,
+        result_ty: Ty,
     ) {
-        let fn_type = unsafe {
-            ffi::BinaryenAddFunctionType(
-                self.module,
-                ptr::null_mut(),
-                return_ty,
-                param_types.as_ptr() as _,
-                param_types.len() as _,
-            )
-        };
+        let fn_ty = self.builder.add_fn_type(None, param_tys, result_ty);
 
         let fn_name = CString::new(name).unwrap();
-        let fn_name_ptr = fn_name.as_ptr();
-
         let env_name = CString::new("env").unwrap();
-        let env_name_ptr = env_name.as_ptr();
-
-        self.c_strings.push(env_name);
-        self.c_strings.push(fn_name);
-
-        unsafe {
-            ffi::BinaryenAddImport(self.module, fn_name_ptr, env_name_ptr, fn_name_ptr, fn_type);
-        }
+        self.builder.add_import(
+            fn_name.clone(),
+            env_name,
+            fn_name,
+            &fn_ty
+        )
     }
 }
 
@@ -99,17 +81,17 @@ fn trans(cfg: &cfg::CFG) {
 
     let mut builder = Module::from_raw(module);
 
-    let procedure_fn_ty = builder.new_fn_type(None, Ty::none(), vec![]);
+    let procedure_fn_ty = builder.add_fn_type(None, vec![], Ty::none());
 
     let c_strings = Vec::new();
     let mut ctx = TransCtx {
-        module,
+        builder: &mut builder,
         cfg,
         c_strings,
         procedure_fn_ty,
     };
 
-    builder.auto_drop();
+    ctx.builder.auto_drop();
 
     unsafe {
         let segments = vec![&FONT_SPRITES as *const u8 as *const c_char];
@@ -125,26 +107,26 @@ fn trans(cfg: &cfg::CFG) {
             segment_sizes.as_ptr() as _,
             1,
         );
-
-        ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
-        ctx.add_import("random", vec![], ffi::BinaryenInt32());
-        ctx.add_import(
-            "draw",
-            vec![
-                ffi::BinaryenInt32(),
-                ffi::BinaryenInt32(),
-                ffi::BinaryenInt32(),
-            ],
-            ffi::BinaryenInt32(),
-        );
-        ctx.add_import("get_dt", vec![], ffi::BinaryenInt32());
-        ctx.add_import("set_dt", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
-        ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
-        ctx.add_import("wait_key", vec![], ffi::BinaryenInt32());
     }
 
-    let reg_i_init = builder.const_literal(Literal::I32(0));
-    builder.new_global(
+    ctx.add_import("clear_screen", vec![], Ty::none());
+    ctx.add_import("random", vec![], Ty::value(ValueTy::I32));
+    ctx.add_import(
+        "draw",
+        vec![
+            ValueTy::I32,
+            ValueTy::I32,
+            ValueTy::I32
+        ],
+        Ty::value(ValueTy::I32)
+    );
+    ctx.add_import("get_dt", vec![], Ty::value(ValueTy::I32));
+    ctx.add_import("set_dt", vec![ValueTy::I32], Ty::none());
+    ctx.add_import("set_st", vec![ValueTy::I32], Ty::none());
+    ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
+
+    let reg_i_init = ctx.builder.const_literal(Literal::I32(0));
+    ctx.builder.new_global(
         CString::new("regI").unwrap(),
         ValueTy::I32,
         true,
@@ -154,8 +136,8 @@ fn trans(cfg: &cfg::CFG) {
     for i in 0..16 {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
-        let init_expr = builder.const_literal(Literal::I32(0));
-        builder.new_global(
+        let init_expr = ctx.builder.const_literal(Literal::I32(0));
+        ctx.builder.new_global(
             CString::new(reg_name).unwrap(),
             ValueTy::I32,
             true,
@@ -168,21 +150,21 @@ fn trans(cfg: &cfg::CFG) {
     println!("subs {:#?}", subroutines);
     for routine_id in subroutines {
         println!("translating {:?}", routine_id);
-        let start_routine_ctx = RoutineTransCtx::new(&mut ctx, &mut builder, *routine_id);
+        let start_routine_ctx = RoutineTransCtx::new(&mut ctx, *routine_id);
         let binaryen_fn_ref = start_routine_ctx.trans();
 
         binaryen_routines.insert(routine_id, binaryen_fn_ref);
     }
 
     let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
-    builder.set_start(start_binaryen_fn);
+    ctx.builder.set_start(start_binaryen_fn);
 
-    if !builder.is_valid() {
+    if !ctx.builder.is_valid() {
         panic!("module is not valid");
     }
 
-    builder.optimize();
-    builder.print();
+    ctx.builder.optimize();
+    ctx.builder.print();
 
     unsafe {
         let mut buf = Vec::<u8>::with_capacity(8192);
@@ -211,13 +193,12 @@ struct RoutineTransCtx<'t> {
 impl<'t> RoutineTransCtx<'t> {
     fn new(
         ctx: &'t mut TransCtx,
-        builder: &'t mut Module,
         routine_id: cfg::RoutineId,
     ) -> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
 
         RoutineTransCtx {
-            builder: builder,
+            builder: &mut ctx.builder,
             routine,
             routine_id,
             procedure_fn_ty: &ctx.procedure_fn_ty,
