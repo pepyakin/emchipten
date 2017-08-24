@@ -100,7 +100,7 @@ impl Module {
         FnRef { inner }
     }
 
-    pub fn new_global(&self, name: CString, ty: ValueTy, mutable: bool, init: Expr) {
+    pub fn add_global(&self, name: CString, ty: ValueTy, mutable: bool, init: Expr) {
         let name_ptr = self.save_string_and_return_ptr(name);
         unsafe {
             ffi::BinaryenAddGlobal(

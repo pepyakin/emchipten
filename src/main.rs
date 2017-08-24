@@ -126,7 +126,7 @@ fn trans(cfg: &cfg::CFG) {
     ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
 
     let reg_i_init = ctx.builder.const_literal(Literal::I32(0));
-    ctx.builder.new_global(
+    ctx.builder.add_global(
         CString::new("regI").unwrap(),
         ValueTy::I32,
         true,
@@ -137,7 +137,7 @@ fn trans(cfg: &cfg::CFG) {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
         let init_expr = ctx.builder.const_literal(Literal::I32(0));
-        ctx.builder.new_global(
+        ctx.builder.add_global(
             CString::new(reg_name).unwrap(),
             ValueTy::I32,
             true,
