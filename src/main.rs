@@ -142,38 +142,27 @@ fn trans(cfg: &cfg::CFG) {
         ctx.add_import("set_dt", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("wait_key", vec![], ffi::BinaryenInt32());
-
-        for i in 0..16 {
-            let reg = Reg::from_index(i);
-            let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
-            ffi::BinaryenAddGlobal(
-                module,
-                reg_name_ptr,
-                ffi::BinaryenInt32(),
-                1,
-                ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0)),
-            );
-        }
     }
 
-    {
-        let init = builder.const_literal(Literal::I32(0));
-        builder.new_global(CString::new("regI").unwrap(), ValueTy::I32, true, init);
+    let reg_i_init = builder.const_literal(Literal::I32(0));
+    builder.new_global(
+        CString::new("regI").unwrap(),
+        ValueTy::I32,
+        true,
+        reg_i_init,
+    );
+
+    for i in 0..16 {
+        let reg = Reg::from_index(i);
+        let reg_name = get_reg_name(reg);
+        let init_expr = builder.const_literal(Literal::I32(0));
+        builder.new_global(
+            CString::new(reg_name).unwrap(),
+            ValueTy::I32,
+            true,
+            init_expr,
+        );
     }
-
-    // for i in 0..16 {
-    //     let reg = Reg::from_index(i);
-    //     let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
-    //     ffi::BinaryenAddGlobal(
-    //         module,
-    //         reg_name_ptr,
-    //         ffi::BinaryenInt32(),
-    //         1,
-    //         ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
-    //     );
-    // }
-
-
 
     let mut binaryen_routines = HashMap::new();
     let subroutines = ctx.cfg.subroutines().keys();
@@ -713,7 +702,7 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
+            let reg_name_ptr = get_string(&mut self.c_strings, get_reg_name(reg));
             ffi::BinaryenGetGlobal(self.module, reg_name_ptr, ffi::BinaryenInt32())
         }
     }
@@ -724,7 +713,7 @@ impl<'t> RoutineTransCtx<'t> {
         value: ffi::BinaryenExpressionRef,
     ) -> ffi::BinaryenExpressionRef {
         unsafe {
-            let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
+            let reg_name_ptr = get_string(&mut self.c_strings, get_reg_name(reg));
             ffi::BinaryenSetGlobal(self.module, reg_name_ptr, value)
         }
     }
@@ -779,7 +768,6 @@ fn get_string(c_strings: &mut Vec<CString>, string: String) -> *const c_char {
     c_string_ptr
 }
 
-fn get_reg_name(c_strings: &mut Vec<CString>, reg: Reg) -> *const c_char {
-    let reg_name = format!("V{}", reg.index());
-    get_string(c_strings, reg_name)
+fn get_reg_name(reg: Reg) -> String {
+    format!("V{}", reg.index())
 }

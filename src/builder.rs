@@ -57,12 +57,13 @@ impl Module {
     pub fn new_fn_type(&self, name: Option<CString>, ty: Ty, param_tys: Vec<ValueTy>) -> FnType {
         let inner = unsafe {
             let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
+            let mut param_tys_raw = param_tys.into_iter().map(|ty| ty.into()).collect::<Vec<_>>();
             ffi::BinaryenAddFunctionType(
                 self.inner.module,
                 name_ptr,
                 ty.into(),
-                param_tys.as_ptr() as _,
-                param_tys.len() as _,
+                param_tys_raw.as_mut_ptr(),
+                param_tys_raw.len() as _,
             )
         };
         FnType { inner }
@@ -83,12 +84,13 @@ impl Module {
     ) -> FnRef {
         let inner = unsafe {
             let name_ptr = self.save_string_and_return_ptr(name);
+            let mut var_tys_raw = var_tys.into_iter().map(|ty| ty.into()).collect::<Vec<_>>();
             ffi::BinaryenAddFunction(
                 self.inner.module,
                 name_ptr,
                 fn_ty.inner,
-                var_tys.as_ptr() as _,
-                var_tys.len() as _,
+                var_tys_raw.as_mut_ptr(),
+                var_tys_raw.len() as _,
                 body.raw,
             )
         };
