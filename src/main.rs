@@ -54,12 +54,7 @@ struct TransCtx<'a> {
 }
 
 impl<'a> TransCtx<'a> {
-    fn add_import(
-        &mut self,
-        name: &str,
-        param_tys: Vec<ValueTy>,
-        result_ty: Ty,
-    ) {
+    fn add_import(&mut self, name: &str, param_tys: Vec<ValueTy>, result_ty: Ty) {
         let fn_ty = self.builder.add_fn_type(None, param_tys, result_ty);
 
         let fn_name = CString::new(name).unwrap();
@@ -68,7 +63,7 @@ impl<'a> TransCtx<'a> {
             fn_name.clone(),
             env_name,
             fn_name,
-            &fn_ty
+            &fn_ty,
         )
     }
 }
@@ -92,19 +87,20 @@ fn trans(cfg: &cfg::CFG) {
         let segment_data = &FONT_SPRITES;
         let segment_offset_expr = ctx.builder.const_literal(Literal::I32(0));
         let segments = vec![Segment::new(segment_data, segment_offset_expr)];
-        ctx.builder.set_memory(1, 1, Some(CString::new("mem").unwrap()), segments);
+        ctx.builder.set_memory(
+            1,
+            1,
+            Some(CString::new("mem").unwrap()),
+            segments,
+        );
     }
 
     ctx.add_import("clear_screen", vec![], Ty::none());
     ctx.add_import("random", vec![], Ty::value(ValueTy::I32));
     ctx.add_import(
         "draw",
-        vec![
-            ValueTy::I32,
-            ValueTy::I32,
-            ValueTy::I32
-        ],
-        Ty::value(ValueTy::I32)
+        vec![ValueTy::I32, ValueTy::I32, ValueTy::I32],
+        Ty::value(ValueTy::I32),
     );
     ctx.add_import("get_dt", vec![], Ty::value(ValueTy::I32));
     ctx.add_import("set_dt", vec![ValueTy::I32], Ty::none());
@@ -177,10 +173,7 @@ struct RoutineTransCtx<'t> {
 }
 
 impl<'t> RoutineTransCtx<'t> {
-    fn new(
-        ctx: &'t mut TransCtx,
-        routine_id: cfg::RoutineId,
-    ) -> RoutineTransCtx<'t> {
+    fn new(ctx: &'t mut TransCtx, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
 
         RoutineTransCtx {
@@ -291,7 +284,11 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::Randomize { vx, imm } => {
                 let rnd_expr = self.trans_call_import("random", vec![], Ty::value(ValueTy::I32));
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
-                let mask_expr = self.builder.binary(BinaryOp::AndInt32, rnd_expr, mask_imm_expr);
+                let mask_expr = self.builder.binary(
+                    BinaryOp::AndInt32,
+                    rnd_expr,
+                    mask_imm_expr,
+                );
                 let store_expr = self.store_reg(vx, mask_expr);
                 stmts.push(store_expr);
             }
@@ -314,7 +311,11 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddI(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
-                let add_expr = self.builder.binary(BinaryOp::AddInt32, vx_expr, load_i_expr);
+                let add_expr = self.builder.binary(
+                    BinaryOp::AddInt32,
+                    vx_expr,
+                    load_i_expr,
+                );
                 let store_i_expr = self.store_i(add_expr);
                 // TODO: Wrapping
                 stmts.push(store_i_expr);
@@ -351,7 +352,11 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = self.builder.binary(BinaryOp::AddInt32, imm_1_expr, load_i_expr);
+                    let increment_i_expr = self.builder.binary(
+                        BinaryOp::AddInt32,
+                        imm_1_expr,
+                        load_i_expr,
+                    );
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -366,7 +371,11 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = self.builder.binary(BinaryOp::AddInt32, imm_1_expr, load_i_expr);
+                    let increment_i_expr = self.builder.binary(
+                        BinaryOp::AddInt32,
+                        imm_1_expr,
+                        load_i_expr,
+                    );
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -376,9 +385,17 @@ impl<'t> RoutineTransCtx<'t> {
                 // (vx & 0xf) << 3
                 let vx_expr = self.load_reg(vx);
                 let mask_imm_expr = self.load_imm(0x0f);
-                let mask_expr = self.builder.binary(BinaryOp::AndInt32, vx_expr, mask_imm_expr);
+                let mask_expr = self.builder.binary(
+                    BinaryOp::AndInt32,
+                    vx_expr,
+                    mask_imm_expr,
+                );
                 let shift_imm_expr = self.load_imm(3);
-                let shift_expr = self.builder.binary(BinaryOp::ShlInt32, mask_expr, shift_imm_expr);
+                let shift_expr = self.builder.binary(
+                    BinaryOp::ShlInt32,
+                    mask_expr,
+                    shift_imm_expr,
+                );
                 let store_i_expr = self.store_i(shift_expr);
 
                 stmts.push(store_i_expr);
@@ -418,14 +435,22 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::AddInt32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder.binary(
+                    BinaryOp::AndInt32,
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
                 let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
+                let overflow_expr = self.builder.binary(
+                    BinaryOp::NeInt32,
+                    load_tmp_expr,
+                    load_result_expr,
+                );
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
@@ -434,14 +459,22 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::SubInt32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder.binary(
+                    BinaryOp::AndInt32,
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
                 let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
+                let overflow_expr = self.builder.binary(
+                    BinaryOp::NeInt32,
+                    load_tmp_expr,
+                    load_result_expr,
+                );
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
@@ -450,7 +483,11 @@ impl<'t> RoutineTransCtx<'t> {
                 // $result = y >> 1
                 // $vf = y & 0x01
                 let imm_1_expr = self.load_imm(1);
-                let shift_expr = self.builder.binary(BinaryOp::ShrUInt32, vy_expr, imm_1_expr);
+                let shift_expr = self.builder.binary(
+                    BinaryOp::ShrUInt32,
+                    vy_expr,
+                    imm_1_expr,
+                );
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
@@ -464,14 +501,22 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::SubInt32, vy_expr, vx_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder.binary(
+                    BinaryOp::AndInt32,
+                    tee_tmp_expr,
+                    mask_imm_expr,
+                );
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
 
                 let load_tmp_expr = self.builder.get_local(TMP_LOCAL, ValueTy::I32);
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
+                let overflow_expr = self.builder.binary(
+                    BinaryOp::NeInt32,
+                    load_tmp_expr,
+                    load_result_expr,
+                );
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
@@ -512,7 +557,11 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
-                let pressed_expr = self.trans_call_import("is_key_pressed", vec![vx_expr], Ty::value(ValueTy::I32));
+                let pressed_expr = self.trans_call_import(
+                    "is_key_pressed",
+                    vec![vx_expr],
+                    Ty::value(ValueTy::I32),
+                );
                 (pressed_expr, self.load_imm(1))
             }
         };
