@@ -95,11 +95,8 @@ impl<'a> SubroutineBuilder<'a> {
     }
 
     fn find_bb(&self, pc: usize) -> Option<usize> {
-        //println!("finding pc = {}", pc);
-        self.bbs.iter().position(|ref bb| {
-            let result = bb.start <= pc && bb.end >= pc;
-            //println!("{:?} = {}", bb, result);
-            result
+        self.bbs.iter().position(|bb| {
+            bb.start <= pc && bb.end >= pc
         })
     }
 
@@ -107,47 +104,42 @@ impl<'a> SubroutineBuilder<'a> {
         println!("building bb from {}...", pc);
         println!("{:?}", self.bbs);
 
-        // TODO: Так какой в этом смысл? Мб копировать инструкции в BB сразу?
-
-        match self.find_bb(pc) {
-            Some(bb_position) => {
-                if self.bbs
-                    .get(bb_position)
-                    .expect("we found it already")
-                    .start == pc
-                {
-                    println!("there is {} already", pc);
-                    return Ok(());
-                }
-
-                let BB {
-                    mut insts,
-                    start,
-                    end,
-                    terminator,
-                } = self.bbs.swap_remove(bb_position);
-                println!("spliting bb {}, {}", start, end);
-
-                // Split instructions between BBs.
-                let (insts1, insts2) = {
-                    let splitted = insts.split_off((pc - start) / 2 - 1);
-                    (insts, splitted)
-                };
-                let falltrough_addr = pc;
-
-                // TODO: Is it ok?
-                self.bbs.push(BB::new(
-                    insts1,
-                    start,
-                    pc - 2,
-                    Terminator::Jump {
-                        target: BasicBlockId(Addr(falltrough_addr as u16)),
-                    },
-                ));
-                self.bbs.push(BB::new(insts2, pc, end, terminator));
+        if let Some(bb_position) = self.find_bb(pc) {
+            if self.bbs
+                .get(bb_position)
+                .expect("we found it already")
+                .start == pc
+            {
+                println!("there is {} already", pc);
                 return Ok(());
             }
-            None => {}
+
+            let BB {
+                mut insts,
+                start,
+                end,
+                terminator,
+            } = self.bbs.swap_remove(bb_position);
+            println!("spliting bb {}, {}", start, end);
+
+            // Split instructions between BBs.
+            let (insts1, insts2) = {
+                let splitted = insts.split_off((pc - start) / 2 - 1);
+                (insts, splitted)
+            };
+            let falltrough_addr = pc;
+
+            // TODO: Is it ok?
+            self.bbs.push(BB::new(
+                insts1,
+                start,
+                pc - 2,
+                Terminator::Jump {
+                    target: BasicBlockId(Addr(falltrough_addr as u16)),
+                },
+            ));
+            self.bbs.push(BB::new(insts2, pc, end, terminator));
+            return Ok(());
         }
 
         let mut insts: Vec<Instruction> = Vec::new();
@@ -228,12 +220,7 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
     let start_subroutine_id = Addr(0x200);
     subroutine_stack.push(start_subroutine_id);
 
-    loop {
-        let subroutine_addr = match subroutine_stack.pop() {
-            Some(addr) => addr,
-            None => break,
-        };
-
+    while let Some(subroutine_addr) = subroutine_stack.pop() {
         let mut sub_builder =
             SubroutineBuilder::new(Rom::new(rom), (subroutine_addr.0 - 0x200) as usize);
         let mut seen_calls_from_sr = HashSet::new();

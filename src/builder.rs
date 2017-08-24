@@ -54,7 +54,7 @@ impl Module {
         unsafe { ffi::BinaryenModuleOptimize(self.inner.raw) }
     }
 
-    pub fn is_valid(&mut self) -> bool {
+    pub fn is_valid(&self) -> bool {
         unsafe { ffi::BinaryenModuleValidate(self.inner.raw) == 1 }
     }
 
@@ -727,7 +727,7 @@ impl Relooper {
         }
     }
 
-    pub fn add_block<'m>(&mut self, expr: Expr) -> RelooperBlockId {
+    pub fn add_block(&mut self, expr: Expr) -> RelooperBlockId {
         let inner = unsafe { ffi::RelooperAddBlock(self.inner, expr.raw) };
         let index = self.blocks.len();
         self.blocks.push(inner);
@@ -743,7 +743,7 @@ impl Relooper {
         Expr::from_raw(module, inner)
     }
 
-    pub fn add_branch<'m>(
+    pub fn add_branch(
         &mut self,
         from: RelooperBlockId,
         to: RelooperBlockId,

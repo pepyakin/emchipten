@@ -184,9 +184,8 @@ impl<'t> RoutineTransCtx<'t> {
         }
 
         for bb_id in self.routine.bbs.keys() {
-            let bb = &self.routine.bbs[&bb_id];
-
-            let from_relooper_block = relooper_blocks[&bb_id];
+            let bb = &self.routine.bbs[bb_id];
+            let from_relooper_block = relooper_blocks[bb_id];
 
             use cfg::Terminator::*;
             match bb.terminator() {
@@ -219,11 +218,11 @@ impl<'t> RoutineTransCtx<'t> {
 
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
-        let body_code = relooper.render(&self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
+        let body_code = relooper.render(self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
         let var_types = vec![ValueTy::I32, ValueTy::I32];
         self.builder.new_fn(
             CString::new(func_name_from_addr(self.routine_id.0)).unwrap(),
-            &self.procedure_fn_ty,
+            self.procedure_fn_ty,
             var_types,
             body_code,
         )

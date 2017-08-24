@@ -267,8 +267,8 @@ impl Instruction {
                     f: {
                         use enum_primitive::FromPrimitive;
 
-                        Fun::from_u8(iw.n()).ok_or(
-                            ErrorKind::UnrecognizedInstruction(iw),
+                        Fun::from_u8(iw.n()).ok_or_else(
+                            || ErrorKind::UnrecognizedInstruction(iw),
                         )?
                     },
                 }
