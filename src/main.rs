@@ -300,33 +300,18 @@ impl<'t> RoutineTransCtx<'t> {
             stmts.push(self.builder.ret(None));
         }
 
-        let exprs = stmts.into_iter().map(|s| Expr::from_raw(self.builder, s)).collect();
-        self.builder.block(None, exprs, Ty::none())
+        self.builder.block(None, stmts, Ty::none())
     }
 
-    unsafe fn trans_instruction(
-        &mut self,
-        instruction: &Instruction,
-        stmts: &mut Vec<Expr>,
-    ) {
+    unsafe fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<Expr>) {
         match *instruction {
             Instruction::Call(addr) => {
                 let routine_name = CString::new(func_name_from_addr(addr)).unwrap();
-                let routine_name_ptr = routine_name.as_ptr();
-                self.c_strings.push(routine_name);
-
-                let call_expr = ffi::BinaryenCall(
-                    self.module,
-                    routine_name_ptr,
-                    ptr::null_mut(),
-                    0 as _,
-                    ffi::BinaryenNone(),
-                );
+                let call_expr = self.builder.call(routine_name, vec![]);
                 stmts.push(call_expr);
             }
             Instruction::ClearScreen => {
-                let clear_expr =
-                    self.trans_call_import("clear_screen", vec![], Ty::none());
+                let clear_expr = self.trans_call_import("clear_screen", vec![], Ty::none());
                 stmts.push(clear_expr);
             }
             Instruction::PutImm { vx, imm } => {
@@ -336,8 +321,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddImm { vx, imm } => {
                 let imm_expr = self.load_imm(imm.0 as u32);
                 let load_expr = self.load_reg(vx);
-                let add_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), load_expr, imm_expr);
+                let add_expr = self.builder.binary(BinaryOp::AddInt32, load_expr, imm_expr);
                 stmts.push(self.store_reg(vx, add_expr));
             }
             Instruction::Apply { vx, vy, f } => {
@@ -346,12 +330,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::Randomize { vx, imm } => {
                 let rnd_expr = self.trans_call_import("random", vec![], Ty::value(ValueTy::I32));
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
-                let mask_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenAndInt32(),
-                    rnd_expr,
-                    mask_imm_expr,
-                );
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, rnd_expr, mask_imm_expr);
                 let store_expr = self.store_reg(vx, mask_expr);
                 stmts.push(store_expr);
             }
@@ -374,8 +353,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddI(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
-                let add_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, load_i_expr);
+                let add_expr = self.builder.binary(BinaryOp::AddInt32, vx_expr, load_i_expr);
                 let store_i_expr = self.store_i(add_expr);
                 // TODO: Wrapping
                 stmts.push(store_i_expr);
@@ -387,15 +365,13 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Instruction::SetST(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_st_expr =
-                    self.trans_call_import("set_st", vec![load_expr], Ty::none());
+                let set_st_expr = self.trans_call_import("set_st", vec![load_expr], Ty::none());
                 // TODO: Drop?
                 stmts.push(set_st_expr);
             }
             Instruction::SetDT(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_dt_expr =
-                    self.trans_call_import("set_dt", vec![load_expr], Ty::none());
+                let set_dt_expr = self.trans_call_import("set_dt", vec![load_expr], Ty::none());
                 // TODO: Drop?
                 stmts.push(set_dt_expr);
             }
@@ -414,12 +390,7 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = ffi::BinaryenBinary(
-                        self.module,
-                        ffi::BinaryenAddInt32(),
-                        imm_1_expr,
-                        load_i_expr,
-                    );
+                    let increment_i_expr = self.builder.binary(BinaryOp::AddInt32, imm_1_expr, load_i_expr);
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -434,12 +405,7 @@ impl<'t> RoutineTransCtx<'t> {
 
                     let imm_1_expr = self.load_imm(1);
                     let load_i_expr = self.load_i();
-                    let increment_i_expr = ffi::BinaryenBinary(
-                        self.module,
-                        ffi::BinaryenAddInt32(),
-                        imm_1_expr,
-                        load_i_expr,
-                    );
+                    let increment_i_expr = self.builder.binary(BinaryOp::AddInt32, imm_1_expr, load_i_expr);
                     let store_i_expr = self.store_i(increment_i_expr);
 
                     stmts.push(store_i_expr);
@@ -449,19 +415,9 @@ impl<'t> RoutineTransCtx<'t> {
                 // (vx & 0xf) << 3
                 let vx_expr = self.load_reg(vx);
                 let mask_imm_expr = self.load_imm(0x0f);
-                let mask_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenAndInt32(),
-                    vx_expr,
-                    mask_imm_expr,
-                );
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, vx_expr, mask_imm_expr);
                 let shift_imm_expr = self.load_imm(3);
-                let shift_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenShlInt32(),
-                    mask_expr,
-                    shift_imm_expr,
-                );
+                let shift_expr = self.builder.binary(BinaryOp::ShlInt32, mask_expr, shift_imm_expr);
                 let store_i_expr = self.store_i(shift_expr);
 
                 stmts.push(store_i_expr);
@@ -470,13 +426,7 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    unsafe fn trans_apply(
-        &mut self,
-        vx: Reg,
-        vy: Reg,
-        f: Fun,
-        stmts: &mut Vec<Expr>,
-    ) {
+    unsafe fn trans_apply(&mut self, vx: Reg, vy: Reg, f: Fun, stmts: &mut Vec<Expr>) {
         let vx_expr = self.load_reg(vx);
         let vy_expr = self.load_reg(vy);
 
@@ -485,20 +435,17 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(self.store_reg(vx, vy_expr));
             }
             Fun::Or => {
-                let or_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenOrInt32(), vx_expr, vy_expr);
+                let or_expr = self.builder.binary(BinaryOp::OrInt32, vx_expr, vy_expr);
                 let store_expr = self.store_reg(vx, or_expr);
                 stmts.push(store_expr);
             }
             Fun::And => {
-                let and_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), vx_expr, vy_expr);
+                let and_expr = self.builder.binary(BinaryOp::AndInt32, vx_expr, vy_expr);
                 let store_expr = self.store_reg(vx, and_expr);
                 stmts.push(store_expr);
             }
             Fun::Xor => {
-                let xor_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenXorInt32(), vx_expr, vy_expr);
+                let xor_expr = self.builder.binary(BinaryOp::XorInt32, vx_expr, vy_expr);
                 let store_expr = self.store_reg(vx, xor_expr);
                 stmts.push(store_expr);
             }
@@ -507,16 +454,10 @@ impl<'t> RoutineTransCtx<'t> {
                 // $result = (tmp & 0xFFFF)
                 // $overflow = (tmp != result)
 
-                let add_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenAddInt32(), vx_expr, vy_expr);
+                let add_expr = self.builder.binary(BinaryOp::AddInt32, vx_expr, vy_expr);
                 let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenAndInt32(),
-                    tee_tmp_expr,
-                    mask_imm_expr,
-                );
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -524,27 +465,16 @@ impl<'t> RoutineTransCtx<'t> {
                 let load_tmp_expr =
                     ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenNeInt32(),
-                    load_tmp_expr,
-                    load_result_expr,
-                );
+                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
             }
             Fun::Subtract => {
-                let add_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenSubInt32(), vx_expr, vy_expr);
+                let add_expr = self.builder.binary(BinaryOp::SubInt32, vx_expr, vy_expr);
                 let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenAndInt32(),
-                    tee_tmp_expr,
-                    mask_imm_expr,
-                );
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -552,12 +482,7 @@ impl<'t> RoutineTransCtx<'t> {
                 let load_tmp_expr =
                     ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenNeInt32(),
-                    load_tmp_expr,
-                    load_result_expr,
-                );
+                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
@@ -566,28 +491,20 @@ impl<'t> RoutineTransCtx<'t> {
                 // $result = y >> 1
                 // $vf = y & 0x01
                 let imm_1_expr = self.load_imm(1);
-                let shift_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenShrUInt32(), vy_expr, imm_1_expr);
+                let shift_expr = self.builder.binary(BinaryOp::ShrUInt32, vy_expr, imm_1_expr);
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
                 // TODO: It is OK to use same expr twice???
-                let mask_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenAndInt32(), vy_expr, imm_1_expr);
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, vy_expr, imm_1_expr);
                 let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
                 stmts.push(store_vf_expr);
             }
             Fun::SubtractInv => {
-                let add_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenSubInt32(), vy_expr, vx_expr);
+                let add_expr = self.builder.binary(BinaryOp::SubInt32, vy_expr, vx_expr);
                 let tee_tmp_expr = ffi::BinaryenTeeLocal(self.module, TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenAndInt32(),
-                    tee_tmp_expr,
-                    mask_imm_expr,
-                );
+                let mask_expr = self.builder.binary(BinaryOp::AndInt32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -595,12 +512,7 @@ impl<'t> RoutineTransCtx<'t> {
                 let load_tmp_expr =
                     ffi::BinaryenGetLocal(self.module, TMP_LOCAL, ffi::BinaryenInt32());
                 let load_result_expr = self.load_reg(vx);
-                let overflow_expr = ffi::BinaryenBinary(
-                    self.module,
-                    ffi::BinaryenNeInt32(),
-                    load_tmp_expr,
-                    load_result_expr,
-                );
+                let overflow_expr = self.builder.binary(BinaryOp::NeInt32, load_tmp_expr, load_result_expr);
                 let store_overflow_expr = self.store_reg(Reg::Vf, overflow_expr);
 
                 stmts.push(store_overflow_expr);
@@ -609,14 +521,12 @@ impl<'t> RoutineTransCtx<'t> {
                 // $result = y << 1;
                 // $vf = y << 1;
                 let imm_1_expr = self.load_imm(1);
-                let shift_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenShlInt32(), vy_expr, imm_1_expr);
+                let shift_expr = self.builder.binary(BinaryOp::ShlInt32, vy_expr, imm_1_expr);
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
                 // TODO: It is OK to use same expr twice???
-                let mask_expr =
-                    ffi::BinaryenBinary(self.module, ffi::BinaryenShlInt32(), vy_expr, imm_1_expr);
+                let mask_expr = self.builder.binary(BinaryOp::ShlInt32, vy_expr, imm_1_expr);
                 let store_vf_expr = self.store_reg(Reg::Vf, mask_expr);
                 stmts.push(store_vf_expr);
             }
@@ -624,17 +534,12 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn trans_call_import(
-        &mut self,
-        name: &str,
-        operands: Vec<Expr>,
-        result_ty: Ty,
-    ) -> Expr {
+    fn trans_call_import(&mut self, name: &str, operands: Vec<Expr>, result_ty: Ty) -> Expr {
         let fn_name = CString::new(name).unwrap();
         self.builder.call_import(fn_name, operands, result_ty)
     }
 
-    fn trans_predicate(&mut self, predicate: Predicate) -> ffi::BinaryenExpressionRef {
+    fn trans_predicate(&mut self, predicate: Predicate) -> Expr {
         let (lhs, rhs) = match predicate.cond {
             Condition::Reg(vx, vy) => {
                 let vx_expr = self.load_reg(vx);
@@ -654,35 +559,41 @@ impl<'t> RoutineTransCtx<'t> {
                 (pressed_expr, self.load_imm(1))
             }
         };
-        unsafe {
-            let cmp_op = match predicate.cmp {
-                Cmp::Eq => ffi::BinaryenEqInt32(),
-                Cmp::Ne => ffi::BinaryenNeInt32(),
-            };
-            ffi::BinaryenBinary(self.module, cmp_op, lhs, rhs)
-        }
+        let cmp_op = match predicate.cmp {
+            Cmp::Eq => BinaryOp::EqInt32,
+            Cmp::Ne => BinaryOp::NeInt32,
+        };
+        self.builder.binary(cmp_op, lhs, rhs)
     }
 
     fn load_i(&mut self) -> Expr {
-        self.builder.get_global(CString::from("regI").unwrap(), ValueTy::I32)
+        self.builder.get_global(
+            CString::from("regI").unwrap(),
+            ValueTy::I32,
+        )
     }
 
     fn store_i(&mut self, value: Expr) -> Expr {
-        self.builder.set_global(CString::from("regI").unwrap(), value)
+        self.builder.set_global(
+            CString::from("regI").unwrap(),
+            value,
+        )
     }
 
     fn load_reg(&mut self, reg: Reg) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.get_global(CString::from(reg_name).unwrap(), ValueTy::I32)
+        self.builder.get_global(
+            CString::from(reg_name).unwrap(),
+            ValueTy::I32,
+        )
     }
 
-    fn store_reg(
-        &mut self,
-        reg: Reg,
-        value: Expr,
-    ) -> Expr {
+    fn store_reg(&mut self, reg: Reg, value: Expr) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.set_global(CString::from(reg_name).unwrap(), value)
+        self.builder.set_global(
+            CString::from(reg_name).unwrap(),
+            value,
+        )
     }
 
     fn load_imm(&mut self, c: u32) -> Expr {
