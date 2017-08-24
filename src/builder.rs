@@ -17,7 +17,7 @@ impl Drop for InnerModule {
 }
 
 pub struct Module {
-    inner: Rc<InnerModule>
+    inner: Rc<InnerModule>,
 }
 
 impl Module {
@@ -25,8 +25,8 @@ impl Module {
         Module {
             inner: Rc::new(InnerModule {
                 module,
-                c_strings: RefCell::new(Vec::new())
-            })
+                c_strings: RefCell::new(Vec::new()),
+            }),
         }
     }
 
@@ -37,21 +37,15 @@ impl Module {
     }
 
     pub fn optimize(&mut self) {
-        unsafe { 
-            ffi::BinaryenModuleOptimize(self.inner.module) 
-        }
+        unsafe { ffi::BinaryenModuleOptimize(self.inner.module) }
     }
 
     pub fn is_valid(&mut self) -> bool {
-        unsafe {
-            ffi::BinaryenModuleValidate(self.inner.module) == 1
-        }
+        unsafe { ffi::BinaryenModuleValidate(self.inner.module) == 1 }
     }
 
     pub fn print(&self) {
-        unsafe {
-            ffi::BinaryenModulePrint(self.inner.module)
-        }
+        unsafe { ffi::BinaryenModulePrint(self.inner.module) }
     }
 
     pub fn set_start(&mut self, fn_ref: &FnRef) {
@@ -68,12 +62,10 @@ impl Module {
                 name_ptr,
                 ty.into(),
                 param_tys.as_ptr() as _,
-                param_tys.len() as _
+                param_tys.len() as _,
             )
         };
-        FnType {
-            inner
-        }
+        FnType { inner }
     }
 
     fn save_string_and_return_ptr(&self, string: CString) -> *const c_char {
@@ -82,7 +74,13 @@ impl Module {
         str_ptr
     }
 
-    pub fn new_fn(&self, name: CString, fn_ty: &FnType, var_tys: Vec<ValueTy>, body: Expr) -> FnRef {
+    pub fn new_fn(
+        &self,
+        name: CString,
+        fn_ty: &FnType,
+        var_tys: Vec<ValueTy>,
+        body: Expr,
+    ) -> FnRef {
         let inner = unsafe {
             let name_ptr = self.save_string_and_return_ptr(name);
             ffi::BinaryenAddFunction(
@@ -91,23 +89,21 @@ impl Module {
                 fn_ty.inner,
                 var_tys.as_ptr() as _,
                 var_tys.len() as _,
-                body.raw
+                body.raw,
             )
         };
-        FnRef {
-            inner
-        }
+        FnRef { inner }
     }
 
     pub fn new_global(&self, name: CString, ty: ValueTy, mutable: bool, init: Expr) {
         let name_ptr = self.save_string_and_return_ptr(name);
         unsafe {
             ffi::BinaryenAddGlobal(
-                self.inner.module, 
+                self.inner.module,
                 name_ptr,
                 ty.into(),
                 mutable as c_int,
-                init.raw
+                init.raw,
             );
         }
     }
@@ -118,35 +114,39 @@ impl Module {
         let name_ptr = self.save_string_and_return_ptr(name);
 
         let raw_expr = unsafe {
-            ffi::BinaryenBlock(self.inner.module, name_ptr, children.as_mut_ptr() as _, children.len() as _, ty.into())
+            ffi::BinaryenBlock(
+                self.inner.module,
+                name_ptr,
+                children.as_mut_ptr() as _,
+                children.len() as _,
+                ty.into(),
+            )
         };
         Expr::from_raw(self, raw_expr)
     }
 
     pub fn const_literal(&mut self, literal: Literal) -> Expr {
-        let raw_expr = unsafe {
-            ffi::BinaryenConst(self.inner.module, literal.into())
-        };
+        let raw_expr = unsafe { ffi::BinaryenConst(self.inner.module, literal.into()) };
         Expr::from_raw(self, raw_expr)
     }
 }
 
 pub struct FnType {
-    inner: ffi::BinaryenFunctionTypeRef
+    inner: ffi::BinaryenFunctionTypeRef,
 }
 
 pub struct FnRef {
     inner: ffi::BinaryenFunctionRef,
 }
 
-/// Type of the values. These can be found on the stack and 
+/// Type of the values. These can be found on the stack and
 /// in the local vars.
 #[derive(Copy, Clone)]
 pub enum ValueTy {
     I32,
     I64,
     F32,
-    F64
+    F64,
 }
 
 pub struct Ty(Option<ValueTy>);
@@ -178,9 +178,7 @@ impl From<Ty> for ffi::BinaryenType {
     fn from(ty: Ty) -> ffi::BinaryenType {
         match ty.0 {
             Some(ty) => ty.into(),
-            None => unsafe {
-                ffi::BinaryenNone()
-            }
+            None => unsafe { ffi::BinaryenNone() },
         }
     }
 }
@@ -194,7 +192,7 @@ impl Expr {
     pub fn from_raw(module: &Module, raw: ffi::BinaryenExpressionRef) -> Expr {
         Expr {
             _module_ref: Rc::clone(&module.inner),
-            raw
+            raw,
         }
     }
 
@@ -207,7 +205,7 @@ pub enum Literal {
     I32(u32),
     I64(u64),
     F32(f32),
-    F64(f64)
+    F64(f64),
 }
 
 impl From<Literal> for ffi::BinaryenLiteral {
@@ -235,14 +233,12 @@ impl Relooper {
     pub fn new() -> Relooper {
         Relooper {
             inner: unsafe { ffi::RelooperCreate() },
-            blocks: Vec::new()
+            blocks: Vec::new(),
         }
     }
 
     pub fn add_block<'m>(&mut self, expr: Expr) -> RelooperBlockId {
-        let inner = unsafe {
-            ffi::RelooperAddBlock(self.inner, expr.raw)
-        };
+        let inner = unsafe { ffi::RelooperAddBlock(self.inner, expr.raw) };
         let index = self.blocks.len();
         self.blocks.push(inner);
 
@@ -257,7 +253,13 @@ impl Relooper {
         Expr::from_raw(module, inner)
     }
 
-    pub fn add_branch<'m>(&mut self, from: RelooperBlockId, to: RelooperBlockId, condition: Option<Expr>, code: Option<Expr>) {
+    pub fn add_branch<'m>(
+        &mut self,
+        from: RelooperBlockId,
+        to: RelooperBlockId,
+        condition: Option<Expr>,
+        code: Option<Expr>,
+    ) {
         let from_block = self.blocks[from.0];
         let to_block = self.blocks[to.0];
 

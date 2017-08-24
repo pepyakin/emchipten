@@ -63,14 +63,19 @@ impl<'a> Drop for TransCtx<'a> {
 }
 
 impl<'a> TransCtx<'a> {
-    fn add_import(&mut self, name: &str, param_types: Vec<ffi::BinaryenType>, return_ty: ffi::BinaryenType) {
+    fn add_import(
+        &mut self,
+        name: &str,
+        param_types: Vec<ffi::BinaryenType>,
+        return_ty: ffi::BinaryenType,
+    ) {
         let fn_type = unsafe {
             ffi::BinaryenAddFunctionType(
-                self.module, 
-                ptr::null_mut(), 
-                return_ty, 
+                self.module,
+                ptr::null_mut(),
+                return_ty,
                 param_types.as_ptr() as _,
-                param_types.len() as _
+                param_types.len() as _,
             )
         };
 
@@ -79,7 +84,7 @@ impl<'a> TransCtx<'a> {
 
         let env_name = CString::new("env").unwrap();
         let env_name_ptr = env_name.as_ptr();
-        
+
         self.c_strings.push(env_name);
         self.c_strings.push(fn_name);
 
@@ -94,19 +99,15 @@ fn trans(cfg: &cfg::CFG) {
     let param_types: Vec<ffi::BinaryenType> = vec![];
 
     let mut builder = Module::from_raw(module);
-    
-    let procedure_fn_ty = builder.new_fn_type(
-        None,
-        Ty::none(),
-        vec![]
-    );
+
+    let procedure_fn_ty = builder.new_fn_type(None, Ty::none(), vec![]);
 
     let c_strings = Vec::new();
     let mut ctx = TransCtx {
         module,
         cfg,
         c_strings,
-        procedure_fn_ty
+        procedure_fn_ty,
     };
 
     builder.auto_drop();
@@ -123,12 +124,20 @@ fn trans(cfg: &cfg::CFG) {
             segments.as_ptr() as _,
             segment_offsets.as_ptr() as _,
             segment_sizes.as_ptr() as _,
-            1
+            1,
         );
 
         ctx.add_import("clear_screen", vec![], ffi::BinaryenNone());
         ctx.add_import("random", vec![], ffi::BinaryenInt32());
-        ctx.add_import("draw", vec![ffi::BinaryenInt32(), ffi::BinaryenInt32(), ffi::BinaryenInt32()], ffi::BinaryenInt32());
+        ctx.add_import(
+            "draw",
+            vec![
+                ffi::BinaryenInt32(),
+                ffi::BinaryenInt32(),
+                ffi::BinaryenInt32(),
+            ],
+            ffi::BinaryenInt32(),
+        );
         ctx.add_import("get_dt", vec![], ffi::BinaryenInt32());
         ctx.add_import("set_dt", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
         ctx.add_import("set_st", vec![ffi::BinaryenInt32()], ffi::BinaryenNone());
@@ -138,11 +147,11 @@ fn trans(cfg: &cfg::CFG) {
             let reg = Reg::from_index(i);
             let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
             ffi::BinaryenAddGlobal(
-                module, 
+                module,
                 reg_name_ptr,
                 ffi::BinaryenInt32(),
                 1,
-                ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0))
+                ffi::BinaryenConst(module, ffi::BinaryenLiteralInt32(0)),
             );
         }
     }
@@ -156,7 +165,7 @@ fn trans(cfg: &cfg::CFG) {
     //     let reg = Reg::from_index(i);
     //     let reg_name_ptr = get_reg_name(&mut ctx.c_strings, reg);
     //     ffi::BinaryenAddGlobal(
-    //         module, 
+    //         module,
     //         reg_name_ptr,
     //         ffi::BinaryenInt32(),
     //         1,
@@ -164,7 +173,7 @@ fn trans(cfg: &cfg::CFG) {
     //     );
     // }
 
-    
+
 
     let mut binaryen_routines = HashMap::new();
     let subroutines = ctx.cfg.subroutines().keys();
@@ -214,7 +223,11 @@ struct RoutineTransCtx<'t> {
 }
 
 impl<'t> RoutineTransCtx<'t> {
-    fn new(ctx: &'t mut TransCtx, builder: &'t mut Module, routine_id: cfg::RoutineId) -> RoutineTransCtx<'t> {
+    fn new(
+        ctx: &'t mut TransCtx,
+        builder: &'t mut Module,
+        routine_id: cfg::RoutineId,
+    ) -> RoutineTransCtx<'t> {
         let routine = &ctx.cfg.subroutines()[&routine_id];
 
         RoutineTransCtx {
@@ -249,31 +262,37 @@ impl<'t> RoutineTransCtx<'t> {
                 Jump { target } => {
                     let to_relooper_block = relooper_blocks[&target];
                     relooper.add_branch(from_relooper_block, to_relooper_block, None, None);
-                },
-                Skip { predicate, next, skip } => {
+                }
+                Skip {
+                    predicate,
+                    next,
+                    skip,
+                } => {
                     let predicate_expr = self.trans_predicate(predicate);
                     let predicate_expr = Expr::from_raw(self.builder, predicate_expr);
                     let skip_relooper_block = relooper_blocks[&skip];
                     let next_relooper_block = relooper_blocks[&next];
 
-                    relooper.add_branch(from_relooper_block, skip_relooper_block, Some(predicate_expr), None);
+                    relooper.add_branch(
+                        from_relooper_block,
+                        skip_relooper_block,
+                        Some(predicate_expr),
+                        None,
+                    );
                     relooper.add_branch(from_relooper_block, next_relooper_block, None, None);
-                },
+                }
             }
         }
 
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
         let body_code = relooper.render(&self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
-        let var_types = vec![
-            ValueTy::I32,
-            ValueTy::I32,
-        ];
+        let var_types = vec![ValueTy::I32, ValueTy::I32];
         self.builder.new_fn(
             CString::new(func_name_from_addr(self.routine_id.0)).unwrap(),
             &self.procedure_fn_ty,
             var_types,
-            body_code
+            body_code,
         )
     }
 
@@ -296,14 +315,14 @@ impl<'t> RoutineTransCtx<'t> {
 
         let raw_expr = unsafe {
             ffi::BinaryenBlock(
-            self.module,
-            ptr::null_mut(),
-            stmts.as_ptr() as _,
-            stmts.len() as _,
-            ffi::BinaryenNone(),
+                self.module,
+                ptr::null_mut(),
+                stmts.as_ptr() as _,
+                stmts.len() as _,
+                ffi::BinaryenNone(),
             )
         };
-        
+
         Expr::from_raw(self.builder, raw_expr)
     }
 
@@ -323,7 +342,7 @@ impl<'t> RoutineTransCtx<'t> {
                     routine_name_ptr,
                     ptr::null_mut(),
                     0 as _,
-                    ffi::BinaryenNone()
+                    ffi::BinaryenNone(),
                 );
                 stmts.push(call_expr);
             }
@@ -655,59 +674,47 @@ impl<'t> RoutineTransCtx<'t> {
                 let vx_expr = self.load_reg(vx);
                 let vy_expr = self.load_reg(vy);
                 (vx_expr, vy_expr)
-            },
+            }
             Condition::Imm(vx, imm) => {
                 let vx_expr = self.load_reg(vx);
                 let imm_expr = self.load_imm(imm.0 as _);
                 (vx_expr, imm_expr)
-            },
+            }
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let pressed_expr = unsafe {
                     self.trans_call_import("is_key_pressed", vec![vx_expr], ffi::BinaryenInt32())
                 };
                 (pressed_expr, self.load_imm(1))
-            },
+            }
         };
-        unsafe { 
+        unsafe {
             let cmp_op = match predicate.cmp {
                 Cmp::Eq => ffi::BinaryenEqInt32(),
                 Cmp::Ne => ffi::BinaryenNeInt32(),
             };
-            ffi::BinaryenBinary(self.module, cmp_op, lhs, rhs) 
+            ffi::BinaryenBinary(self.module, cmp_op, lhs, rhs)
         }
     }
 
     fn load_i(&mut self) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
-            ffi::BinaryenGetGlobal(
-                self.module,
-                reg_name_ptr,
-                ffi::BinaryenInt32()
-            )
+            ffi::BinaryenGetGlobal(self.module, reg_name_ptr, ffi::BinaryenInt32())
         }
     }
 
     fn store_i(&mut self, value: ffi::BinaryenExpressionRef) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_name_ptr = get_string(&mut self.c_strings, "regI".to_string());
-            ffi::BinaryenSetGlobal(
-                self.module,
-                reg_name_ptr,
-                value
-            )
+            ffi::BinaryenSetGlobal(self.module, reg_name_ptr, value)
         }
     }
 
     fn load_reg(&mut self, reg: Reg) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
-            ffi::BinaryenGetGlobal(
-                self.module,
-                reg_name_ptr,
-                ffi::BinaryenInt32()
-            )
+            ffi::BinaryenGetGlobal(self.module, reg_name_ptr, ffi::BinaryenInt32())
         }
     }
 
@@ -718,11 +725,7 @@ impl<'t> RoutineTransCtx<'t> {
     ) -> ffi::BinaryenExpressionRef {
         unsafe {
             let reg_name_ptr = get_reg_name(&mut self.c_strings, reg);
-            ffi::BinaryenSetGlobal(
-                self.module,
-                reg_name_ptr,
-                value
-            )
+            ffi::BinaryenSetGlobal(self.module, reg_name_ptr, value)
         }
     }
 
