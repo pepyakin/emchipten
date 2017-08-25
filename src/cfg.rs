@@ -87,8 +87,10 @@ impl<'a> SubroutineBuilder<'a> {
                 return Ok(());
             }
 
-            let (bb1, bb2) = self.bbs.swap_remove(bb_position).split(pc);
-            self.bbs.push(bb1);
+            let bb2 = self.bbs
+                .get_mut(bb_position)
+                .expect("we found it already")
+                .split(pc);
             self.bbs.push(bb2);
             return Ok(());
         }
@@ -278,20 +280,19 @@ impl BasicBlock {
         self.terminator
     }
 
-    pub fn split(mut self, pc: usize) -> (BasicBlock, BasicBlock) {
+    pub fn split(&mut self, pc: usize) -> BasicBlock {
         println!("spliting bb {}, {}", self.start, self.end);
 
         // Split instructions between BBs.
-        let (insts1, insts2) = {
-            let splitted = self.insts.split_off((pc - self.start) / 2 - 1);
-            (self.insts, splitted)
-        };
-        let bb1_terminator = Terminator::Jump {
+        let insts2 = self.insts.split_off((pc - self.start) / 2 - 1);
+        let bb2 = BasicBlock::new(insts2, pc, self.end, self.terminator);
+
+        self.end = pc - 2;
+        self.terminator = Terminator::Jump {
             target: BasicBlockId(Addr(pc as u16)),
         };
-        let bb1 = BasicBlock::new(insts1, self.start, pc - 2, bb1_terminator);
-        let bb2 = BasicBlock::new(insts2, pc, self.end, self.terminator);
-        (bb1, bb2)
+
+        bb2
     }
 }
 
