@@ -555,11 +555,6 @@ impl<'t> RoutineTransCtx<'t> {
     }
 }
 
-
-fn func_name_from_addr(addr: Addr) -> String {
-    format!("routine_{}", addr.0)
-}
-
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const FONT_SPRITES: [u8; 80] = [
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -582,6 +577,10 @@ const FONT_SPRITES: [u8; 80] = [
 
 const TMP_LOCAL: ffi::BinaryenIndex = 0;
 const LABEL_HELPER_LOCAL: ffi::BinaryenIndex = 1;
+
+fn func_name_from_addr(addr: Addr) -> String {
+    format!("routine_{}", addr.0)
+}
 
 fn get_reg_name(reg: Reg) -> String {
     format!("V{}", reg.index())
