@@ -28,31 +28,11 @@ impl<'a> Rom<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
-struct BB {
-    insts: Vec<Instruction>,
-    start: usize,
-    end: usize,
-    terminator: Terminator,
-}
-
-impl BB {
-    fn new(insts: Vec<Instruction>, start: usize, end: usize, terminator: Terminator) -> BB {
-        assert!(start <= end);
-        BB {
-            insts,
-            start,
-            end,
-            terminator,
-        }
-    }
-}
-
 struct SubroutineBuilder<'a> {
     rom: Rom<'a>,
     addr: usize,
     root: bool,
-    bbs: Vec<BB>,
+    bbs: Vec<BasicBlock>,
 }
 
 impl<'a> SubroutineBuilder<'a> {
@@ -66,20 +46,12 @@ impl<'a> SubroutineBuilder<'a> {
     }
 
     fn into_routine(self) -> Routine {
-        let mut bbs = HashMap::new();
-        for bb in self.bbs {
-            let BB {
-                insts,
-                terminator,
-                start,
-                ..
-            } = bb;
-            let basic_block = BasicBlock::new(insts, terminator);
-            bbs.insert(BasicBlockId(Addr(start as u16)), basic_block);
-        }
         Routine {
             entry: BasicBlockId(Addr(self.addr as u16)),
-            bbs,
+            bbs: self.bbs
+                .into_iter()
+                .map(|bb| (BasicBlockId(Addr(bb.start as u16)), bb))
+                .collect(),
         }
     }
 
@@ -91,7 +63,7 @@ impl<'a> SubroutineBuilder<'a> {
         terminator: Terminator,
     ) {
         println!("sealing {}, {}", leader, pc);
-        let bb = BB::new(insts, leader, pc, terminator);
+        let bb = BasicBlock::new(insts, leader, pc, terminator);
         self.bbs.push(bb);
     }
 
@@ -115,7 +87,7 @@ impl<'a> SubroutineBuilder<'a> {
                 return Ok(());
             }
 
-            let BB {
+            let BasicBlock {
                 mut insts,
                 start,
                 end,
@@ -131,7 +103,7 @@ impl<'a> SubroutineBuilder<'a> {
             let falltrough_addr = pc;
 
             // TODO: Is it ok?
-            self.bbs.push(BB::new(
+            self.bbs.push(BasicBlock::new(
                 insts1,
                 start,
                 pc - 2,
@@ -139,7 +111,7 @@ impl<'a> SubroutineBuilder<'a> {
                     target: BasicBlockId(Addr(falltrough_addr as u16)),
                 },
             ));
-            self.bbs.push(BB::new(insts2, pc, end, terminator));
+            self.bbs.push(BasicBlock::new(insts2, pc, end, terminator));
             return Ok(());
         }
 
@@ -299,7 +271,34 @@ impl From<Addr> for BasicBlockId {
 #[derive(Debug)]
 pub struct BasicBlock {
     insts: Vec<Instruction>,
+    start: usize,
+    end: usize,
     terminator: Terminator,
+}
+
+impl BasicBlock {
+    fn new(
+        insts: Vec<Instruction>,
+        start: usize,
+        end: usize,
+        terminator: Terminator,
+    ) -> BasicBlock {
+        assert!(!insts.iter().any(|x| x.is_terminating()));
+        BasicBlock {
+            insts,
+            start,
+            end,
+            terminator,
+        }
+    }
+
+    pub fn instructions(&self) -> &[Instruction] {
+        &self.insts
+    }
+
+    pub fn terminator(&self) -> Terminator {
+        self.terminator
+    }
 }
 
 impl Instruction {
@@ -310,21 +309,6 @@ impl Instruction {
             Ret | Jump(..) | Skip(..) | JumpPlusV0(..) => true,
             _ => false,
         }
-    }
-}
-
-impl BasicBlock {
-    fn new(insts: Vec<Instruction>, terminator: Terminator) -> BasicBlock {
-        assert!(!insts.iter().any(|x| x.is_terminating()));
-        BasicBlock { insts, terminator }
-    }
-
-    pub fn instructions(&self) -> &[Instruction] {
-        &self.insts
-    }
-
-    pub fn terminator(&self) -> Terminator {
-        self.terminator
     }
 }
 
