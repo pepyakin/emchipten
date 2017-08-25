@@ -75,11 +75,8 @@ impl Module {
     pub fn write(&mut self) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::with_capacity(8192);
         unsafe {
-            let written = ffi::BinaryenModuleWrite(
-                self.inner.raw, 
-                buf.as_mut_ptr() as *mut c_char,
-                8192
-            );
+            let written =
+                ffi::BinaryenModuleWrite(self.inner.raw, buf.as_mut_ptr() as *mut c_char, 8192);
             if written == buf.capacity() {
                 // TODO:
                 panic!("unimplemented");
