@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use instruction::*;
 use error::*;
+use std::fmt;
 
 struct Rom<'a> {
     rom: &'a [u8],
@@ -273,6 +274,12 @@ impl Terminator {
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct BasicBlockId(Addr);
+
+impl fmt::Display for BasicBlockId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "bb{}", (self.0).0)
+    }
+}
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct RoutineId(pub Addr);
