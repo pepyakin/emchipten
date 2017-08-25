@@ -87,31 +87,9 @@ impl<'a> SubroutineBuilder<'a> {
                 return Ok(());
             }
 
-            let BasicBlock {
-                mut insts,
-                start,
-                end,
-                terminator,
-            } = self.bbs.swap_remove(bb_position);
-            println!("spliting bb {}, {}", start, end);
-
-            // Split instructions between BBs.
-            let (insts1, insts2) = {
-                let splitted = insts.split_off((pc - start) / 2 - 1);
-                (insts, splitted)
-            };
-            let falltrough_addr = pc;
-
-            // TODO: Is it ok?
-            self.bbs.push(BasicBlock::new(
-                insts1,
-                start,
-                pc - 2,
-                Terminator::Jump {
-                    target: BasicBlockId(Addr(falltrough_addr as u16)),
-                },
-            ));
-            self.bbs.push(BasicBlock::new(insts2, pc, end, terminator));
+            let (bb1, bb2) = self.bbs.swap_remove(bb_position).split(pc);
+            self.bbs.push(bb1);
+            self.bbs.push(bb2);
             return Ok(());
         }
 
@@ -298,6 +276,22 @@ impl BasicBlock {
 
     pub fn terminator(&self) -> Terminator {
         self.terminator
+    }
+
+    pub fn split(mut self, pc: usize) -> (BasicBlock, BasicBlock) {
+        println!("spliting bb {}, {}", self.start, self.end);
+
+        // Split instructions between BBs.
+        let (insts1, insts2) = {
+            let splitted = self.insts.split_off((pc - self.start) / 2 - 1);
+            (self.insts, splitted)
+        };
+        let bb1_terminator = Terminator::Jump {
+            target: BasicBlockId(Addr(pc as u16)),
+        };
+        let bb1 = BasicBlock::new(insts1, self.start, pc - 2, bb1_terminator);
+        let bb2 = BasicBlock::new(insts2, pc, self.end, self.terminator);
+        (bb1, bb2)
     }
 }
 
