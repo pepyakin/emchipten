@@ -218,7 +218,7 @@ impl Module {
         Expr::from_raw(self, raw_expr)
     }
 
-    pub fn const_literal(&mut self, literal: Literal) -> Expr {
+    pub fn const_(&mut self, literal: Literal) -> Expr {
         let raw_expr = unsafe { ffi::BinaryenConst(self.inner.raw, literal.into()) };
         Expr::from_raw(self, raw_expr)
     }

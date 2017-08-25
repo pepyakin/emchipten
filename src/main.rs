@@ -80,7 +80,7 @@ fn trans(cfg: &cfg::CFG) {
 
     {
         let segment_data = &FONT_SPRITES;
-        let segment_offset_expr = ctx.builder.const_literal(Literal::I32(0));
+        let segment_offset_expr = ctx.builder.const_(Literal::I32(0));
         let segments = vec![Segment::new(segment_data, segment_offset_expr)];
         ctx.builder
             .set_memory(1, 1, Some(CString::new("mem").unwrap()), segments);
@@ -98,7 +98,7 @@ fn trans(cfg: &cfg::CFG) {
     ctx.add_import("set_st", vec![ValueTy::I32], Ty::none());
     ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
 
-    let reg_i_init = ctx.builder.const_literal(Literal::I32(0));
+    let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder.add_global(
         CString::new("regI").unwrap(),
         ValueTy::I32,
@@ -109,7 +109,7 @@ fn trans(cfg: &cfg::CFG) {
     for i in 0..16 {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
-        let init_expr = ctx.builder.const_literal(Literal::I32(0));
+        let init_expr = ctx.builder.const_(Literal::I32(0));
         ctx.builder.add_global(
             CString::new(reg_name).unwrap(),
             ValueTy::I32,
@@ -541,7 +541,7 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn load_imm(&mut self, c: u32) -> Expr {
-        self.builder.const_literal(Literal::I32(c))
+        self.builder.const_(Literal::I32(c))
     }
 
     fn load_mem_at_i(&mut self) -> Expr {
