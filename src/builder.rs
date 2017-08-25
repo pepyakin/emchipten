@@ -713,32 +713,32 @@ impl From<Literal> for ffi::BinaryenLiteral {
 pub struct RelooperBlockId(usize);
 
 pub struct Relooper {
-    inner: ffi::RelooperRef,
+    raw: ffi::RelooperRef,
     blocks: Vec<ffi::RelooperBlockRef>,
 }
 
 impl Relooper {
     pub fn new() -> Relooper {
         Relooper {
-            inner: unsafe { ffi::RelooperCreate() },
+            raw: unsafe { ffi::RelooperCreate() },
             blocks: Vec::new(),
         }
     }
 
     pub fn add_block(&mut self, expr: Expr) -> RelooperBlockId {
-        let inner = unsafe { ffi::RelooperAddBlock(self.inner, expr.raw) };
+        let raw = unsafe { ffi::RelooperAddBlock(self.raw, expr.raw) };
         let index = self.blocks.len();
-        self.blocks.push(inner);
+        self.blocks.push(raw);
 
         RelooperBlockId(index)
     }
 
-    pub fn render(self, module: &Module, entry: RelooperBlockId, label_helper: u32) -> Expr {
-        let entry = self.blocks[entry.0];
-        let inner = unsafe {
-            ffi::RelooperRenderAndDispose(self.inner, entry, label_helper as _, module.inner.raw)
+    pub fn render(self, module: &Module, entry_id: RelooperBlockId, label_helper: u32) -> Expr {
+        let entry = self.blocks[entry_id.0];
+        let raw = unsafe {
+            ffi::RelooperRenderAndDispose(self.raw, entry, label_helper as _, module.inner.raw)
         };
-        Expr::from_raw(module, inner)
+        Expr::from_raw(module, raw)
     }
 
     pub fn add_branch(
