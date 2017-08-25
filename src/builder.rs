@@ -42,6 +42,12 @@ impl Module {
         }
     }
 
+    pub fn trace(&mut self) {
+        unsafe {
+            ffi::BinaryenSetAPITracing(1);
+        }
+    }
+
     pub fn auto_drop(&mut self) {
         unsafe {
             ffi::BinaryenModuleAutoDrop(self.inner.raw);
