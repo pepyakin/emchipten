@@ -198,15 +198,16 @@ impl Module {
 
     // TODO: undefined ty?
     // https://github.com/WebAssembly/binaryen/blob/master/src/binaryen-c.h#L272
-    pub fn block(&mut self, name: Option<CString>, mut children: Vec<Expr>, ty: Ty) -> Expr {
+    pub fn block(&mut self, name: Option<CString>, children: Vec<Expr>, ty: Ty) -> Expr {
         let name_ptr = name.map_or(ptr::null(), |n| self.save_string_and_return_ptr(n));
 
         let raw_expr = unsafe {
+            let mut children_raw: Vec<_> = children.into_iter().map(|ty| ty.into_raw()).collect();
             ffi::BinaryenBlock(
                 self.inner.raw,
                 name_ptr,
-                children.as_mut_ptr() as _,
-                children.len() as _,
+                children_raw.as_mut_ptr(),
+                children_raw.len() as _,
                 ty.into(),
             )
         };
