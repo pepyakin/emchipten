@@ -143,8 +143,6 @@ fn trans(cfg: &cfg::CFG) {
 
     let mut file = File::create("out.wasm").unwrap();
     file.write_all(&buf).unwrap();
-
-    println!("buf={:#?}", buf);
 }
 
 struct RoutineTransCtx<'t> {
