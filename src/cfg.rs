@@ -105,24 +105,50 @@ impl<'a> SubroutineBuilder<'a> {
     fn build_bb(
         &mut self,
         pc: &mut usize,
-        seen_calls: &mut HashSet<Addr>,
-    ) -> Result<(Vec<Instruction>, Instruction)> {
+        instructions: &mut Vec<Instruction>,
+        leaders: &HashMap<usize, BasicBlockId>,
+    ) -> Result<Terminator> {
         let mut insts: Vec<Instruction> = Vec::new();
-        loop {
+        let terminator = loop {
             let instruction = self.rom.decode_instruction(*pc)?;
-
             println!("pc={}, {:?}", pc, instruction);
 
-            if let Instruction::Call(addr) = instruction {
-                seen_calls.insert(addr);
-            }
-            if instruction.is_terminating() {
-                return Ok((insts, instruction));
+            // Check, if current instruction is a terminator.
+            match instruction {
+                Instruction::Ret => {
+                    break Terminator::Ret;
+                }
+                Instruction::Jump(addr) => {
+                    let target_pc = (addr.0 - 0x200) as usize;
+                    let target_id = leaders[&target_pc];
+                    break Terminator::Jump { target: target_id };
+                }
+                Instruction::Skip(predicate) => {
+                    let next_id = leaders[&(*pc + 2)];
+                    let skip_id = leaders[&(*pc + 4)];
+                    break Terminator::Skip {
+                        predicate,
+                        next: next_id,
+                        skip: skip_id,
+                    };
+                }
+                _ => {}
             }
 
-            insts.push(instruction);
+            // Otherwise, put current instructions into result vector.
+            instructions.push(instruction);
+
+            // If next instruction is a leader, then this instruction is last in current
+            // basic block.
+            if let Some(next_block_id) = leaders.get(&(*pc + 2)) {
+                break Terminator::Jump {
+                    target: *next_block_id,
+                };
+            }
             *pc += 2;
-        }
+        };
+
+        Ok(terminator)
     }
 
     fn identify_leaders(
@@ -140,6 +166,7 @@ impl<'a> SubroutineBuilder<'a> {
                 let instruction = self.rom.decode_instruction(pc)?;
                 match instruction {
                     Instruction::Ret => {
+                        self.has_ret = true;
                         break;
                     }
                     Instruction::Jump(addr) => {
@@ -182,73 +209,13 @@ impl<'a> SubroutineBuilder<'a> {
         println!("leaders = {:?}", leaders);
 
         for leader_pc in leaders.keys().cloned() {
-            let bb_id = leaders[&leader_pc];
             let mut pc: usize = leader_pc;
             let mut instructions = Vec::new();
-            loop {
-                let instruction = self.rom.decode_instruction(pc)?;
 
-                println!("pc={}, {:?}", pc, instruction);
+            let terminator = self.build_bb(&mut pc, &mut instructions, &leaders)?;
 
-                match instruction {
-                    Instruction::Ret => {
-                        self.has_ret = true;
-                        self.seal_bb(
-                            bb_id,
-                            BBRange::new(leader_pc, pc),
-                            instructions,
-                            Terminator::Ret,
-                        );
-                        break;
-                    }
-                    Instruction::Jump(addr) => {
-                        let target_pc = (addr.0 - 0x200) as usize;
-                        let target_id = leaders[&target_pc];
-                        self.seal_bb(
-                            bb_id,
-                            BBRange::new(leader_pc, pc),
-                            instructions,
-                            Terminator::Jump { target: target_id },
-                        );
-                        break;
-                    }
-                    Instruction::Skip(predicate) => {
-                        let next_pc = pc + 2;
-                        let skip_pc = pc + 4;
-                        let next_id = leaders[&next_pc];
-                        let skip_id = leaders[&skip_pc];
-
-                        self.seal_bb(
-                            bb_id,
-                            BBRange::new(leader_pc, pc),
-                            instructions,
-                            Terminator::Skip {
-                                predicate,
-                                next: next_id,
-                                skip: skip_id,
-                            },
-                        );
-                        break;
-                    }
-                    _ => {}
-                }
-
-                instructions.push(instruction);
-
-                if let Some(next_block_id) = leaders.get(&(pc + 2)) {
-                    self.seal_bb(
-                        bb_id,
-                        BBRange::new(leader_pc, pc),
-                        instructions,
-                        Terminator::Jump {
-                            target: *next_block_id,
-                        },
-                    );
-                    break;
-                }
-
-                pc += 2;
-            }
+            let bb_id = leaders[&leader_pc];
+            self.seal_bb(bb_id, BBRange::new(leader_pc, pc), instructions, terminator);
         }
 
         Ok(())
