@@ -102,13 +102,6 @@ impl<'a> SubroutineBuilder<'a> {
         self.bb_ranges.insert(id, range);
     }
 
-    fn find_bb(&self, pc: usize) -> Option<BasicBlockId> {
-        self.bb_ranges
-            .iter()
-            .find(|&(&id, ref range)| range.contains(pc))
-            .map(|(&id, _)| id)
-    }
-
     fn build_bb(
         &mut self,
         pc: &mut usize,
@@ -132,20 +125,10 @@ impl<'a> SubroutineBuilder<'a> {
         }
     }
 
-    fn find_or_create_bb(
+    fn identify_leaders(
         &mut self,
-        current_bb_id: BasicBlockId,
-        start_pc: usize,
-        target_pc: usize,
-    ) -> BasicBlockId {
-        if target_pc == start_pc {
-            current_bb_id
-        } else {
-            self.find_bb(target_pc).unwrap_or_else(|| self.bbs.gen_id())
-        }
-    }
-
-    fn identify_leaders(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<HashMap<usize, BasicBlockId>> {
+        seen_calls: &mut HashSet<Addr>,
+    ) -> Result<HashMap<usize, BasicBlockId>> {
         let mut leaders: HashMap<usize, BasicBlockId> = HashMap::new();
 
         let mut stack: Vec<usize> = Vec::new();
@@ -214,7 +197,12 @@ impl<'a> SubroutineBuilder<'a> {
                             // TODO: is it really belongs to here? Mb .has_ret = true?
                             panic!("ret in root");
                         }
-                        self.seal_bb(bb_id, BBRange::new(leader_pc, pc), instructions, Terminator::Ret);
+                        self.seal_bb(
+                            bb_id,
+                            BBRange::new(leader_pc, pc),
+                            instructions,
+                            Terminator::Ret,
+                        );
                         break;
                     }
                     Instruction::Jump(addr) => {
@@ -256,7 +244,9 @@ impl<'a> SubroutineBuilder<'a> {
                         bb_id,
                         BBRange::new(leader_pc, pc),
                         instructions,
-                        Terminator::Jump { target: *next_block_id },
+                        Terminator::Jump {
+                            target: *next_block_id,
+                        },
                     );
                     break;
                 }
@@ -615,5 +605,41 @@ fn test_cfg() {
     let start = cfg.start;
     let start_routine = cfg.subroutines.get(&start).unwrap();
 
-    println!("{:#?}", start_routine);
+    let entry_id = start_routine.entry;
+    let entry_bb = &start_routine.bbs[&entry_id];
+
+    assert_eq!(entry_bb.insts, vec![]);
+
+    let (next_id, skip_id) = match entry_bb.terminator {
+        Terminator::Skip { next, skip, .. } => (next, skip),
+        unexpected => panic!("expected Skip, but found {:?}", unexpected),
+    };
+
+    let next_jmp_id = match start_routine.bbs[&next_id].terminator {
+        Terminator::Jump { target } => target,
+        unexpected => panic!("expected Jump, but found {:?}", unexpected),
+    };
+    let skip_jmp_id = match start_routine.bbs[&skip_id].terminator {
+        Terminator::Jump { target } => target,
+        unexpected => panic!("expected Jump, but found {:?}", unexpected),
+    };
+
+    assert_eq!(
+        start_routine.bbs[&next_jmp_id].insts,
+        vec![Instruction::Sys(Addr(0x002))]
+    );
+    assert_eq!(
+        start_routine.bbs[&next_jmp_id].terminator,
+        Terminator::Jump { target: entry_id }
+    );
+    assert_eq!(
+        start_routine.bbs[&skip_jmp_id].insts,
+        vec![Instruction::Sys(Addr(0x001))]
+    );
+    assert_eq!(
+        start_routine.bbs[&skip_jmp_id].terminator,
+        Terminator::Jump {
+            target: next_jmp_id,
+        }
+    );
 }
