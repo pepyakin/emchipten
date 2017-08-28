@@ -102,63 +102,82 @@ impl<'a> SubroutineBuilder<'a> {
         self.find_bb(pc).unwrap_or_else(|| self.bbs.gen_id())
     }
 
-    fn build_bb(&mut self, basic_block_id: BasicBlockId, seen_calls: &mut HashSet<Addr>, mut pc: usize) -> Result<()> {
-        println!("building bb from {}...", pc);
-        println!("{:#?}", self.bbs);
-
-        if let Some(bb_id) = self.find_bb(pc) {
-            let bb_range = self.bb_ranges[&bb_id];
-            println!("spliting {:?}", bb_range);
-            if bb_range.start == pc {
-                println!("there is pc={} already, bb_id={:?}", pc, bb_id);
-                assert_eq!(basic_block_id, bb_id);
-                return Ok(());
-            }
-            let split_offset = (pc - bb_range.start) / 2;
-            self.bbs.split(bb_id, basic_block_id, split_offset);
-            return Ok(());
-        }
-
+    fn build_bb(&mut self, pc: &mut usize, seen_calls: &mut HashSet<Addr>) -> Result<(Vec<Instruction>, Instruction)> {
         let mut insts: Vec<Instruction> = Vec::new();
-
-        let leader = pc;
         loop {
-            let instruction = self.rom.decode_instruction(pc)?;
+            let instruction = self.rom.decode_instruction(*pc)?;
 
             println!("pc={}, {:?}", pc, instruction);
 
-            use Instruction::*;
-            match instruction {
-                Ret => {
+            if let Instruction::Call(addr) = instruction {
+                seen_calls.insert(addr);
+            }
+            if instruction.is_terminating() {
+                return Ok((insts, instruction));
+            }
+
+            insts.push(instruction);
+            *pc += 2;
+        }
+    }
+
+    fn build_cfg(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<()> {
+        // Create basic block processing stack and push start address of the routine.
+        let mut bb_stack: Vec<(BasicBlockId, usize)> = Vec::new();
+        bb_stack.push((BasicBlockId::entry(), self.addr));
+
+        while let Some((bb_id, start_pc)) = bb_stack.pop() {
+            println!("building bb from {}...", start_pc);
+            println!("{:#?}", self.bbs);
+
+            if let Some(containing_bb_id) = self.find_bb(start_pc) {
+                let bb_range = self.bb_ranges[&containing_bb_id];
+                println!("spliting {:?}", bb_range);
+                if bb_range.start == start_pc {
+                    println!("there is pc={} already, containing_bb_id={:?}", start_pc, containing_bb_id);
+                    assert_eq!(bb_id, containing_bb_id);
+                    continue;
+                }
+                let split_offset = (start_pc - bb_range.start) / 2;
+                self.bbs.split(containing_bb_id, bb_id, split_offset);
+                continue;
+            }
+
+            let mut pc = start_pc;
+            let (insts, inst) = self.build_bb(&mut pc, seen_calls)?;
+            let bb_range = BBRange::new(start_pc, pc);
+
+            match inst {
+                Instruction::Ret => {
                     if self.root {
+                        // TODO: error
                         panic!("ret in root");
                     }
-                    self.seal_bb(basic_block_id, BBRange::new(leader, pc), insts, Terminator::Ret);
-                    break;
+                    self.seal_bb(bb_id, bb_range, insts, Terminator::Ret);
                 }
-                Jump(addr) => {
+                Instruction::Jump(addr) => {
                     let target_pc = (addr.0 - 0x200) as usize;
                     let target_id = self.find_or_create_bb(target_pc);
                     self.seal_bb(
-                        basic_block_id,
-                        BBRange::new(leader, pc),
+                        bb_id,
+                        bb_range,
                         insts,
                         Terminator::Jump {
                             target: target_id,
                         },
                     );
-                    self.build_bb(target_id, seen_calls, target_pc)?;
-                    break;
+
+                    bb_stack.push((target_id, target_pc));
                 }
-                Skip(predicate) => {
+                Instruction::Skip(predicate) => {
                     let next_pc = pc + 2;
                     let skip_pc = pc + 4;
                     let next_id = self.find_or_create_bb(next_pc);
                     let skip_id = self.find_or_create_bb(skip_pc);
 
                     self.seal_bb(
-                        basic_block_id,
-                        BBRange::new(leader, pc),
+                        bb_id,
+                        bb_range,
                         insts,
                         Terminator::Skip {
                             predicate,
@@ -168,26 +187,17 @@ impl<'a> SubroutineBuilder<'a> {
                     );
 
                     // First we do 'skip', then 'next'.
-                    self.build_bb(next_id, seen_calls, next_pc)?;
-                    self.build_bb(skip_id, seen_calls, skip_pc)?;
-                    break;
+                    bb_stack.push((next_id, next_pc));
+                    bb_stack.push((skip_id, skip_pc));
                 }
-                Call(addr) => {
-                    seen_calls.insert(addr);
+                _ => {
+                    assert!(inst.is_terminating());
+                    panic!("missing handler for terminating instruction {:?}", inst);
                 }
-                _ => {}
             }
-
-            insts.push(instruction);
-            pc += 2;
         }
 
-        Ok(())
-    }
-
-    fn build_cfg(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<()> {
-        let start_from = self.addr;
-        self.build_bb(BasicBlockId::entry(), seen_calls, start_from)?;
+        
         Ok(())
     }
 }
