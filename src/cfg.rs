@@ -507,11 +507,10 @@ fn test_bbrange_intersects() {
 
 #[test]
 fn test_jump_self() {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     let rom = vec![
-        0x00,
-        0xE0, // CLS
-        0x12,
-        0x02, // 0x202: JMP 0x202
+        0x00, 0xE0, // CLS
+        0x12, 0x02, // 0x202: JMP 0x202
     ];
     let cfg = build_cfg(&rom).unwrap();
 
@@ -528,11 +527,10 @@ fn test_jump_self() {
 
 #[test]
 fn test_jump_self2() {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     let rom = vec![
-        0x12,
-        0x02, // JMP 0x202
-        0x12,
-        0x02, // 0x202: JMP 0x202
+        0x12, 0x02, // JMP 0x202
+        0x12, 0x02, // 0x202: JMP 0x202
     ];
     let cfg = build_cfg(&rom).unwrap();
 
@@ -551,4 +549,23 @@ fn test_jump_self2() {
             target: BasicBlockId(1),
         }
     );
+}
+
+#[test]
+fn test_cfg() {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let rom = vec![
+        0x30, 0x02, // 0x200: SE V0, 0
+        0x12, 0x08, // JMP 0x208
+        0x12, 0x06, // JMP 0x206
+        0x00, 0x01, // 0x206: SYS 0x001
+        0x00, 0x02, // 0x208: SYS 0x002,
+        0x12, 0x00, // JMP 0x200
+    ];
+    let cfg = build_cfg(&rom).unwrap();
+
+    let start = cfg.start;
+    let start_routine = cfg.subroutines.get(&start).unwrap();
+
+    println!("{:#?}", start_routine);
 }
