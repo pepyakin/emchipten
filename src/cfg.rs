@@ -88,7 +88,11 @@ impl<'a> SubroutineBuilder<'a> {
     ) {
         println!("sealing {:?}, bb={:?}", range, id);
 
-        let intersecting_ranges: Vec<_> = self.bb_ranges.values().filter(|r| r.intersects(&range)).cloned().collect();
+        let intersecting_ranges: Vec<_> = self.bb_ranges
+            .values()
+            .filter(|r| r.intersects(&range))
+            .cloned()
+            .collect();
         if !intersecting_ranges.is_empty() {
             panic!("there are intersecting ranges: {:#?}", intersecting_ranges);
         }
@@ -128,7 +132,12 @@ impl<'a> SubroutineBuilder<'a> {
         }
     }
 
-    fn find_or_create_bb(&mut self, current_bb_id: BasicBlockId, start_pc: usize, target_pc: usize) -> BasicBlockId {
+    fn find_or_create_bb(
+        &mut self,
+        current_bb_id: BasicBlockId,
+        start_pc: usize,
+        target_pc: usize,
+    ) -> BasicBlockId {
         if target_pc == start_pc {
             current_bb_id
         } else {
@@ -136,84 +145,123 @@ impl<'a> SubroutineBuilder<'a> {
         }
     }
 
-    fn build_cfg(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<()> {
-        // Create basic block processing stack and push start address of the routine.
-        let mut bb_stack: Vec<(BasicBlockId, usize)> = Vec::new();
-        bb_stack.push((BasicBlockId::entry(), self.addr));
+    fn identify_leaders(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<HashMap<usize, BasicBlockId>> {
+        let mut leaders: HashMap<usize, BasicBlockId> = HashMap::new();
 
-        while let Some((bb_id, start_pc)) = bb_stack.pop() {
-            println!("building bb from {}...", start_pc);
-            println!("{:#?}", self.bbs);
+        let mut stack: Vec<usize> = Vec::new();
+        stack.push(self.addr);
+        leaders.insert(self.addr, BasicBlockId::entry());
 
-            if let Some(containing_bb_id) = self.find_bb(start_pc) {
-                let bb_range = self.bb_ranges[&containing_bb_id];
-                println!("spliting {:?}", bb_range);
-                if containing_bb_id == bb_id {
-                    continue;
-                }
-                if bb_range.start == start_pc {
-                    println!(
-                        "there is pc={} already, containing_bb_id={:?}",
-                        start_pc,
-                        containing_bb_id
-                    );
-                    assert_eq!(bb_id, containing_bb_id);
-                    continue;
-                }
-                let split_offset = (start_pc - bb_range.start) / 2;
-                self.bbs.split(containing_bb_id, bb_id, split_offset);
-                continue;
-            }
-
-            let mut pc = start_pc;
-            let (insts, inst) = self.build_bb(&mut pc, seen_calls)?;
-            let bb_range = BBRange::new(start_pc, pc);
-
-            match inst {
-                Instruction::Ret => {
-                    if self.root {
-                        // TODO: error
-                        panic!("ret in root");
+        while let Some(mut pc) = stack.pop() {
+            loop {
+                let instruction = self.rom.decode_instruction(pc)?;
+                match instruction {
+                    Instruction::Ret => {
+                        break;
                     }
-                    self.seal_bb(bb_id, bb_range, insts, Terminator::Ret);
+                    Instruction::Jump(addr) => {
+                        let target_pc = (addr.0 - 0x200) as usize;
+                        if !leaders.contains_key(&target_pc) {
+                            leaders.insert(target_pc, self.bbs.gen_id());
+                            stack.push(target_pc);
+                        }
+                        break;
+                    }
+                    Instruction::Skip(_) => {
+                        let next_pc = pc + 2;
+                        let skip_pc = pc + 4;
+
+                        if !leaders.contains_key(&next_pc) {
+                            leaders.insert(next_pc, self.bbs.gen_id());
+                            stack.push(next_pc);
+                        }
+                        if !leaders.contains_key(&skip_pc) {
+                            leaders.insert(skip_pc, self.bbs.gen_id());
+                            stack.push(skip_pc);
+                        }
+                        break;
+                    }
+                    Instruction::Call(addr) => {
+                        seen_calls.insert(addr);
+                    }
+                    _ => {}
                 }
-                Instruction::Jump(addr) => {
-                    let target_pc = (addr.0 - 0x200) as usize;
-                    let target_id = self.find_or_create_bb(bb_id, start_pc, target_pc);
+                pc += 2;
+            }
+        }
+
+        Ok(leaders)
+    }
+
+    fn build_cfg(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<()> {
+        let leaders = self.identify_leaders(seen_calls)?;
+
+        println!("leaders = {:?}", leaders);
+
+        for leader_pc in leaders.keys().cloned() {
+            let bb_id = leaders[&leader_pc];
+            let mut pc: usize = leader_pc;
+            let mut instructions = Vec::new();
+            loop {
+                let instruction = self.rom.decode_instruction(pc)?;
+
+                println!("pc={}, {:?}", pc, instruction);
+
+                match instruction {
+                    Instruction::Ret => {
+                        if self.root {
+                            // TODO: error
+                            // TODO: is it really belongs to here? Mb .has_ret = true?
+                            panic!("ret in root");
+                        }
+                        self.seal_bb(bb_id, BBRange::new(leader_pc, pc), instructions, Terminator::Ret);
+                        break;
+                    }
+                    Instruction::Jump(addr) => {
+                        let target_pc = (addr.0 - 0x200) as usize;
+                        let target_id = leaders[&target_pc];
+                        self.seal_bb(
+                            bb_id,
+                            BBRange::new(leader_pc, pc),
+                            instructions,
+                            Terminator::Jump { target: target_id },
+                        );
+                        break;
+                    }
+                    Instruction::Skip(predicate) => {
+                        let next_pc = pc + 2;
+                        let skip_pc = pc + 4;
+                        let next_id = leaders[&next_pc];
+                        let skip_id = leaders[&skip_pc];
+
+                        self.seal_bb(
+                            bb_id,
+                            BBRange::new(leader_pc, pc),
+                            instructions,
+                            Terminator::Skip {
+                                predicate,
+                                next: next_id,
+                                skip: skip_id,
+                            },
+                        );
+                        break;
+                    }
+                    _ => {}
+                }
+
+                instructions.push(instruction);
+
+                if let Some(next_block_id) = leaders.get(&(pc + 2)) {
                     self.seal_bb(
                         bb_id,
-                        bb_range,
-                        insts,
-                        Terminator::Jump { target: target_id },
+                        BBRange::new(leader_pc, pc),
+                        instructions,
+                        Terminator::Jump { target: *next_block_id },
                     );
-
-                    bb_stack.push((target_id, target_pc));
+                    break;
                 }
-                Instruction::Skip(predicate) => {
-                    let next_pc = pc + 2;
-                    let skip_pc = pc + 4;
-                    let next_id = self.find_or_create_bb(bb_id, start_pc, next_pc);
-                    let skip_id = self.find_or_create_bb(bb_id, start_pc, skip_pc);
 
-                    self.seal_bb(
-                        bb_id,
-                        bb_range,
-                        insts,
-                        Terminator::Skip {
-                            predicate,
-                            next: next_id,
-                            skip: skip_id,
-                        },
-                    );
-
-                    // First we do 'skip', then 'next'.
-                    bb_stack.push((skip_id, skip_pc));
-                    bb_stack.push((next_id, next_pc));
-                }
-                _ => {
-                    assert!(inst.is_terminating());
-                    panic!("missing handler for terminating instruction {:?}", inst);
-                }
+                pc += 2;
             }
         }
 
