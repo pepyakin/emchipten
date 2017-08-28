@@ -4,28 +4,44 @@ use instruction::*;
 use error::*;
 use std::fmt;
 
-// struct Pc(u16);
-// TODO: addr to pc  (pc = addr - 0x200)
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
+struct Pc(usize);
+
+impl Pc {
+    fn next(self) -> Pc {
+        self.offset(2)
+    }
+
+    fn offset(self, n: usize) -> Pc {
+        Pc(self.0 + n)
+    }
+}
+
+impl From<Addr> for Pc {
+    fn from(addr: Addr) -> Pc {
+        Pc(addr.0 as usize - 0x200)
+    }
+}
 
 struct Rom<'a> {
-    rom: &'a [u8],
+    bytes: &'a [u8],
 }
 
 impl<'a> Rom<'a> {
-    fn new(rom: &[u8]) -> Rom {
-        Rom { rom }
+    fn new(bytes: &[u8]) -> Rom {
+        Rom { bytes }
     }
 
-    fn decode_instruction(&self, pc: usize) -> Result<Instruction> {
+    fn decode_instruction(&self, pc: Pc) -> Result<Instruction> {
         use byteorder::{BigEndian, ByteOrder};
 
-        if pc >= self.rom.len() {
+        if pc.0 >= self.bytes.len() {
             // TODO: handle this
             panic!("unimplemented");
         }
 
-        let actual_pc = pc as usize;
-        let instruction_word = InstructionWord(BigEndian::read_u16(&self.rom[actual_pc..]));
+        let actual_pc = pc.0 as usize;
+        let instruction_word = InstructionWord(BigEndian::read_u16(&self.bytes[actual_pc..]));
 
         Instruction::decode(instruction_word)
     }
@@ -33,17 +49,17 @@ impl<'a> Rom<'a> {
 
 #[derive(Copy, Clone, Debug)]
 struct BBRange {
-    start: usize,
-    end: usize,
+    start: Pc,
+    end: Pc,
 }
 
 impl BBRange {
-    fn new(start: usize, end: usize) -> BBRange {
+    fn new(start: Pc, end: Pc) -> BBRange {
         assert!(start <= end);
         BBRange { start, end }
     }
 
-    fn contains(&self, pc: usize) -> bool {
+    fn contains(&self, pc: Pc) -> bool {
         self.start <= pc && self.end >= pc
     }
 
@@ -54,14 +70,14 @@ impl BBRange {
 
 struct SubroutineBuilder<'a> {
     rom: Rom<'a>,
-    addr: usize,
+    addr: Pc,
     has_ret: bool,
     bbs: BasicBlocks,
     bb_ranges: HashMap<BasicBlockId, BBRange>,
 }
 
 impl<'a> SubroutineBuilder<'a> {
-    fn new(rom: Rom<'a>, addr: usize) -> SubroutineBuilder<'a> {
+    fn new(rom: Rom<'a>, addr: Pc) -> SubroutineBuilder<'a> {
         SubroutineBuilder {
             rom,
             addr,
@@ -104,14 +120,14 @@ impl<'a> SubroutineBuilder<'a> {
 
     fn build_bb(
         &mut self,
-        pc: &mut usize,
+        pc: &mut Pc,
         instructions: &mut Vec<Instruction>,
-        leaders: &HashMap<usize, BasicBlockId>,
+        leaders: &HashMap<Pc, BasicBlockId>,
     ) -> Result<Terminator> {
         let mut insts: Vec<Instruction> = Vec::new();
         let terminator = loop {
             let instruction = self.rom.decode_instruction(*pc)?;
-            println!("pc={}, {:?}", pc, instruction);
+            println!("pc={:?}, {:?}", pc, instruction);
 
             // Check, if current instruction is a terminator.
             match instruction {
@@ -119,13 +135,15 @@ impl<'a> SubroutineBuilder<'a> {
                     break Terminator::Ret;
                 }
                 Instruction::Jump(addr) => {
-                    let target_pc = (addr.0 - 0x200) as usize;
+                    let target_pc = Pc::from(addr);
                     let target_id = leaders[&target_pc];
                     break Terminator::Jump { target: target_id };
                 }
                 Instruction::Skip(predicate) => {
-                    let next_id = leaders[&(*pc + 2)];
-                    let skip_id = leaders[&(*pc + 4)];
+                    let next_pc = pc.offset(2);
+                    let skip_pc = pc.offset(4);
+                    let next_id = leaders[&next_pc];
+                    let skip_id = leaders[&skip_pc];
                     break Terminator::Skip {
                         predicate,
                         next: next_id,
@@ -140,12 +158,12 @@ impl<'a> SubroutineBuilder<'a> {
 
             // If next instruction is a leader, then this instruction is last in current
             // basic block.
-            if let Some(next_block_id) = leaders.get(&(*pc + 2)) {
+            if let Some(next_block_id) = leaders.get(&pc.next()) {
                 break Terminator::Jump {
                     target: *next_block_id,
                 };
             }
-            *pc += 2;
+            *pc = pc.next();
         };
 
         Ok(terminator)
@@ -154,10 +172,10 @@ impl<'a> SubroutineBuilder<'a> {
     fn identify_leaders(
         &mut self,
         seen_calls: &mut HashSet<Addr>,
-    ) -> Result<HashMap<usize, BasicBlockId>> {
-        let mut leaders: HashMap<usize, BasicBlockId> = HashMap::new();
+    ) -> Result<HashMap<Pc, BasicBlockId>> {
+        let mut leaders: HashMap<Pc, BasicBlockId> = HashMap::new();
 
-        let mut stack: Vec<usize> = Vec::new();
+        let mut stack: Vec<Pc> = Vec::new();
         stack.push(self.addr);
         leaders.insert(self.addr, BasicBlockId::entry());
 
@@ -170,7 +188,7 @@ impl<'a> SubroutineBuilder<'a> {
                         break;
                     }
                     Instruction::Jump(addr) => {
-                        let target_pc = (addr.0 - 0x200) as usize;
+                        let target_pc = Pc::from(addr);
                         if !leaders.contains_key(&target_pc) {
                             leaders.insert(target_pc, self.bbs.gen_id());
                             stack.push(target_pc);
@@ -178,8 +196,8 @@ impl<'a> SubroutineBuilder<'a> {
                         break;
                     }
                     Instruction::Skip(_) => {
-                        let next_pc = pc + 2;
-                        let skip_pc = pc + 4;
+                        let next_pc = pc.offset(2);
+                        let skip_pc = pc.offset(4);
 
                         if !leaders.contains_key(&next_pc) {
                             leaders.insert(next_pc, self.bbs.gen_id());
@@ -196,7 +214,7 @@ impl<'a> SubroutineBuilder<'a> {
                     }
                     _ => {}
                 }
-                pc += 2;
+                pc = pc.next();
             }
         }
 
@@ -209,7 +227,7 @@ impl<'a> SubroutineBuilder<'a> {
         println!("leaders = {:?}", leaders);
 
         for leader_pc in leaders.keys().cloned() {
-            let mut pc: usize = leader_pc;
+            let mut pc = leader_pc;
             let mut instructions = Vec::new();
 
             let terminator = self.build_bb(&mut pc, &mut instructions, &leaders)?;
@@ -223,8 +241,6 @@ impl<'a> SubroutineBuilder<'a> {
 }
 
 pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
-    // TODO: 0x200 and 0
-
     let mut seen_calls = HashSet::new();
     let mut subs = HashMap::new();
     let mut subroutine_stack: Vec<Addr> = Vec::new();
@@ -233,8 +249,7 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
     subroutine_stack.push(start_subroutine_id);
 
     while let Some(subroutine_addr) = subroutine_stack.pop() {
-        let mut sub_builder =
-            SubroutineBuilder::new(Rom::new(rom), (subroutine_addr.0 - 0x200) as usize);
+        let mut sub_builder = SubroutineBuilder::new(Rom::new(rom), Pc::from(subroutine_addr));
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
         if subroutine_addr.0 == 0x200 {
@@ -494,20 +509,25 @@ pub fn inline(mut cfg: CFG) -> Routine {
 
 #[test]
 fn test_bbrange_contains() {
-    let bb = BBRange::new(0, 2);
-    assert!(bb.contains(0));
-    assert!(bb.contains(1));
-    assert!(bb.contains(2));
-    assert!(!bb.contains(3));
+    let bb = BBRange::new(Pc(0), Pc(2));
+    assert!(bb.contains(Pc(0)));
+    assert!(bb.contains(Pc(1)));
+    assert!(bb.contains(Pc(2)));
+    assert!(!bb.contains(Pc(3)));
 }
 
 #[test]
 fn test_bbrange_intersects() {
-    assert!(BBRange::new(0, 3).intersects(&BBRange::new(1, 4))); // intersection 1-3
-    assert!(BBRange::new(0, 3).intersects(&BBRange::new(0, 1))); // intersection 0-1
-    assert!(BBRange::new(0, 0).intersects(&BBRange::new(0, 0))); // intersection 0-0
-    assert!(BBRange::new(5, 10).intersects(&BBRange::new(6, 7))); // intersection 6-7
-    assert!(!BBRange::new(0, 5).intersects(&BBRange::new(6, 10))); // intersection 6-7
+    fn intersects(a: (usize, usize), b: (usize, usize)) -> bool {
+        BBRange::new(Pc(a.0), Pc(a.1)).intersects(&BBRange::new(Pc(b.0), Pc(b.1)))
+    }
+
+    assert!(intersects((0, 3), (1, 4))); // intersection 1-3
+    assert!(intersects((0, 3), (0, 1))); // intersection 0-1
+    assert!(intersects((0, 0), (0, 0))); // intersection 0-0
+    assert!(intersects((5, 10), (6, 7))); // intersection 6-7
+
+    assert!(!intersects((0, 5), (6, 10))); // intersection 6-7
 }
 
 #[test]
