@@ -57,7 +57,7 @@ struct SubroutineBuilder<'a> {
     addr: usize,
     root: bool,
     bbs: BasicBlocks,
-    bb_ranges: HashMap<BasicBlockId, BBRange>
+    bb_ranges: HashMap<BasicBlockId, BBRange>,
 }
 
 impl<'a> SubroutineBuilder<'a> {
@@ -67,7 +67,7 @@ impl<'a> SubroutineBuilder<'a> {
             addr,
             root: addr == 0,
             bbs: BasicBlocks::new(),
-            bb_ranges: HashMap::new()
+            bb_ranges: HashMap::new(),
         }
     }
 
@@ -87,7 +87,11 @@ impl<'a> SubroutineBuilder<'a> {
         terminator: Terminator,
     ) {
         println!("sealing {:?}, bb={:?}", range, id);
-        assert!(self.bb_ranges.values().all(|r| !r.intersects(&range)));
+
+        let intersecting_ranges: Vec<_> = self.bb_ranges.values().filter(|r| r.intersects(&range)).cloned().collect();
+        if !intersecting_ranges.is_empty() {
+            panic!("there are intersecting ranges: {:#?}", intersecting_ranges);
+        }
 
         let bb = BasicBlock::new(insts, terminator);
         self.bbs.insert(id, bb);
@@ -95,14 +99,17 @@ impl<'a> SubroutineBuilder<'a> {
     }
 
     fn find_bb(&self, pc: usize) -> Option<BasicBlockId> {
-        self.bb_ranges.iter().find(|&(&id, ref range)| range.contains(pc)).map(|(&id, _)| id)
+        self.bb_ranges
+            .iter()
+            .find(|&(&id, ref range)| range.contains(pc))
+            .map(|(&id, _)| id)
     }
 
-    fn find_or_create_bb(&mut self, pc: usize) -> BasicBlockId {
-        self.find_bb(pc).unwrap_or_else(|| self.bbs.gen_id())
-    }
-
-    fn build_bb(&mut self, pc: &mut usize, seen_calls: &mut HashSet<Addr>) -> Result<(Vec<Instruction>, Instruction)> {
+    fn build_bb(
+        &mut self,
+        pc: &mut usize,
+        seen_calls: &mut HashSet<Addr>,
+    ) -> Result<(Vec<Instruction>, Instruction)> {
         let mut insts: Vec<Instruction> = Vec::new();
         loop {
             let instruction = self.rom.decode_instruction(*pc)?;
@@ -121,6 +128,14 @@ impl<'a> SubroutineBuilder<'a> {
         }
     }
 
+    fn find_or_create_bb(&mut self, current_bb_id: BasicBlockId, start_pc: usize, target_pc: usize) -> BasicBlockId {
+        if target_pc == start_pc {
+            current_bb_id
+        } else {
+            self.find_bb(target_pc).unwrap_or_else(|| self.bbs.gen_id())
+        }
+    }
+
     fn build_cfg(&mut self, seen_calls: &mut HashSet<Addr>) -> Result<()> {
         // Create basic block processing stack and push start address of the routine.
         let mut bb_stack: Vec<(BasicBlockId, usize)> = Vec::new();
@@ -133,8 +148,15 @@ impl<'a> SubroutineBuilder<'a> {
             if let Some(containing_bb_id) = self.find_bb(start_pc) {
                 let bb_range = self.bb_ranges[&containing_bb_id];
                 println!("spliting {:?}", bb_range);
+                if containing_bb_id == bb_id {
+                    continue;
+                }
                 if bb_range.start == start_pc {
-                    println!("there is pc={} already, containing_bb_id={:?}", start_pc, containing_bb_id);
+                    println!(
+                        "there is pc={} already, containing_bb_id={:?}",
+                        start_pc,
+                        containing_bb_id
+                    );
                     assert_eq!(bb_id, containing_bb_id);
                     continue;
                 }
@@ -157,14 +179,12 @@ impl<'a> SubroutineBuilder<'a> {
                 }
                 Instruction::Jump(addr) => {
                     let target_pc = (addr.0 - 0x200) as usize;
-                    let target_id = self.find_or_create_bb(target_pc);
+                    let target_id = self.find_or_create_bb(bb_id, start_pc, target_pc);
                     self.seal_bb(
                         bb_id,
                         bb_range,
                         insts,
-                        Terminator::Jump {
-                            target: target_id,
-                        },
+                        Terminator::Jump { target: target_id },
                     );
 
                     bb_stack.push((target_id, target_pc));
@@ -172,8 +192,8 @@ impl<'a> SubroutineBuilder<'a> {
                 Instruction::Skip(predicate) => {
                     let next_pc = pc + 2;
                     let skip_pc = pc + 4;
-                    let next_id = self.find_or_create_bb(next_pc);
-                    let skip_id = self.find_or_create_bb(skip_pc);
+                    let next_id = self.find_or_create_bb(bb_id, start_pc, next_pc);
+                    let skip_id = self.find_or_create_bb(bb_id, start_pc, skip_pc);
 
                     self.seal_bb(
                         bb_id,
@@ -187,8 +207,8 @@ impl<'a> SubroutineBuilder<'a> {
                     );
 
                     // First we do 'skip', then 'next'.
-                    bb_stack.push((next_id, next_pc));
                     bb_stack.push((skip_id, skip_pc));
+                    bb_stack.push((next_id, next_pc));
                 }
                 _ => {
                     assert!(inst.is_terminating());
@@ -197,7 +217,6 @@ impl<'a> SubroutineBuilder<'a> {
             }
         }
 
-        
         Ok(())
     }
 }
@@ -292,15 +311,9 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
-    fn new(
-        insts: Vec<Instruction>,
-        terminator: Terminator,
-    ) -> BasicBlock {
+    fn new(insts: Vec<Instruction>, terminator: Terminator) -> BasicBlock {
         assert!(!insts.iter().any(|x| x.is_terminating()));
-        BasicBlock {
-            insts,
-            terminator,
-        }
+        BasicBlock { insts, terminator }
     }
 
     pub fn instructions(&self) -> &[Instruction] {
@@ -338,14 +351,14 @@ impl Instruction {
 #[derive(Debug)]
 struct BasicBlocks {
     id_counter: usize,
-    bbs: HashMap<BasicBlockId, BasicBlock>
+    bbs: HashMap<BasicBlockId, BasicBlock>,
 }
 
 impl BasicBlocks {
     fn new() -> BasicBlocks {
         BasicBlocks {
             id_counter: 1, // 0 reserved for BasicBlockId::entry()
-            bbs: HashMap::new()
+            bbs: HashMap::new(),
         }
     }
 
@@ -362,9 +375,10 @@ impl BasicBlocks {
 
     fn split(&mut self, id: BasicBlockId, offspring_bb_id: BasicBlockId, split_offset: usize) {
         // TODO: inline splint fn?
-        let offspring_bb = self.bbs.get_mut(&id)
-           .expect("specified BasicBlock should be inserted")
-           .split(split_offset, offspring_bb_id);
+        let offspring_bb = self.bbs
+            .get_mut(&id)
+            .expect("specified BasicBlock should be inserted")
+            .split(split_offset, offspring_bb_id);
         self.insert(offspring_bb_id, offspring_bb);
     }
 
@@ -488,14 +502,16 @@ fn test_bbrange_intersects() {
     assert!(BBRange::new(0, 3).intersects(&BBRange::new(0, 1))); // intersection 0-1
     assert!(BBRange::new(0, 0).intersects(&BBRange::new(0, 0))); // intersection 0-0
     assert!(BBRange::new(5, 10).intersects(&BBRange::new(6, 7))); // intersection 6-7
-    assert!(!BBRange::new(0, 5).intersects(&BBRange::new(6, 10))); // intersection 6-7 
+    assert!(!BBRange::new(0, 5).intersects(&BBRange::new(6, 10))); // intersection 6-7
 }
 
 #[test]
 fn test_jump_self() {
     let rom = vec![
-        0x00, 0xE0, // CLS
-        0x12, 0x02, // 0x202: JMP 0x202
+        0x00,
+        0xE0, // CLS
+        0x12,
+        0x02, // 0x202: JMP 0x202
     ];
     let cfg = build_cfg(&rom).unwrap();
 
@@ -513,8 +529,10 @@ fn test_jump_self() {
 #[test]
 fn test_jump_self2() {
     let rom = vec![
-        0x12, 0x02, // JMP 0x202
-        0x12, 0x02, // 0x202: JMP 0x202
+        0x12,
+        0x02, // JMP 0x202
+        0x12,
+        0x02, // 0x202: JMP 0x202
     ];
     let cfg = build_cfg(&rom).unwrap();
 
@@ -527,5 +545,10 @@ fn test_jump_self2() {
     let entry_bb = &start_routine.bbs[&entry];
 
     assert_eq!(entry_bb.insts, vec![]);
-    assert_eq!(entry_bb.terminator, Terminator::Jump { target: BasicBlockId(1) });
+    assert_eq!(
+        entry_bb.terminator,
+        Terminator::Jump {
+            target: BasicBlockId(1),
+        }
+    );
 }
