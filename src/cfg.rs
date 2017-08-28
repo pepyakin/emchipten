@@ -55,7 +55,7 @@ impl BBRange {
 struct SubroutineBuilder<'a> {
     rom: Rom<'a>,
     addr: usize,
-    root: bool,
+    has_ret: bool,
     bbs: BasicBlocks,
     bb_ranges: HashMap<BasicBlockId, BBRange>,
 }
@@ -65,7 +65,7 @@ impl<'a> SubroutineBuilder<'a> {
         SubroutineBuilder {
             rom,
             addr,
-            root: addr == 0,
+            has_ret: false,
             bbs: BasicBlocks::new(),
             bb_ranges: HashMap::new(),
         }
@@ -192,11 +192,7 @@ impl<'a> SubroutineBuilder<'a> {
 
                 match instruction {
                     Instruction::Ret => {
-                        if self.root {
-                            // TODO: error
-                            // TODO: is it really belongs to here? Mb .has_ret = true?
-                            panic!("ret in root");
-                        }
+                        self.has_ret = true;
                         self.seal_bb(
                             bb_id,
                             BBRange::new(leader_pc, pc),
@@ -274,6 +270,10 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
             SubroutineBuilder::new(Rom::new(rom), (subroutine_addr.0 - 0x200) as usize);
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
+        if subroutine_addr.0 == 0x200 {
+            // TODO: convert to Err
+            assert!(!sub_builder.has_ret);
+        }
         subs.insert(subroutine_addr.into(), sub_builder);
 
         for seen in seen_calls_from_sr.difference(&seen_calls).cloned() {
