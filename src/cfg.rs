@@ -8,12 +8,8 @@ use std::fmt;
 struct Pc(usize);
 
 impl Pc {
-    fn next(self) -> Pc {
-        self.offset(2)
-    }
-
-    fn offset(self, n: usize) -> Pc {
-        Pc(self.0 + n)
+    fn advance(self, n: usize) -> Pc {
+        Pc(self.0 + n * 2)
     }
 }
 
@@ -140,8 +136,8 @@ impl<'a> SubroutineBuilder<'a> {
                     break Terminator::Jump { target: target_id };
                 }
                 Instruction::Skip(predicate) => {
-                    let next_pc = pc.offset(2);
-                    let skip_pc = pc.offset(4);
+                    let next_pc = pc.advance(1);
+                    let skip_pc = pc.advance(2);
                     let next_id = leaders[&next_pc];
                     let skip_id = leaders[&skip_pc];
                     break Terminator::Skip {
@@ -158,12 +154,12 @@ impl<'a> SubroutineBuilder<'a> {
 
             // If next instruction is a leader, then this instruction is last in current
             // basic block.
-            if let Some(next_block_id) = leaders.get(&pc.next()) {
+            if let Some(next_block_id) = leaders.get(&pc.advance(1)) {
                 break Terminator::Jump {
                     target: *next_block_id,
                 };
             }
-            *pc = pc.next();
+            *pc = pc.advance(1);
         };
 
         Ok(terminator)
@@ -196,8 +192,8 @@ impl<'a> SubroutineBuilder<'a> {
                         break;
                     }
                     Instruction::Skip(_) => {
-                        let next_pc = pc.offset(2);
-                        let skip_pc = pc.offset(4);
+                        let next_pc = pc.advance(1);
+                        let skip_pc = pc.advance(2);
 
                         if !leaders.contains_key(&next_pc) {
                             leaders.insert(next_pc, self.bbs.gen_id());
@@ -214,7 +210,7 @@ impl<'a> SubroutineBuilder<'a> {
                     }
                     _ => {}
                 }
-                pc = pc.next();
+                pc = pc.advance(1);
             }
         }
 
