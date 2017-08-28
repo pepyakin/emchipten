@@ -46,14 +46,14 @@ impl InstructionWord {
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Addr(pub u16); // TODO: Only & 0x0FFF
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Imm(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Imm4(pub u8); // TODO: Only & 0x0F
 
 enum_from_primitive! {
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Reg {
     V0 = 0x0,
     V1 = 0x1,
@@ -86,7 +86,7 @@ impl Reg {
 }
 
 enum_from_primitive! {
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Fun {
     // 8xy0 - LD Vx, Vy
     Id = 0x0,
@@ -117,20 +117,20 @@ pub enum Fun {
 }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Cmp {
     Eq,
     Ne,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Condition {
     Imm(Reg, Imm),
     Reg(Reg, Reg),
     Pressed(Reg),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Predicate {
     pub cmp: Cmp,
     pub cond: Condition,
@@ -293,14 +293,4 @@ impl Instruction {
         };
         Ok(insn)
     }
-}
-
-#[test]
-fn test_apply_xor() {
-    let instruction = Instruction::Apply {
-        vx: Reg::V3,
-        vy: Reg::Vf,
-        f: Fun::Xor,
-    };
-    assert_eq!(instruction.encode().0, 0x83F3);
 }
