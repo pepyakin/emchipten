@@ -68,7 +68,7 @@ struct SubroutineBuilder<'a> {
     rom: Rom<'a>,
     addr: Pc,
     has_ret: bool,
-    bbs: BasicBlocks,
+    bbs: BasicBlocksBuilder,
     bb_ranges: HashMap<BasicBlockId, BBRange>,
 }
 
@@ -78,7 +78,7 @@ impl<'a> SubroutineBuilder<'a> {
             rom,
             addr,
             has_ret: false,
-            bbs: BasicBlocks::new(),
+            bbs: BasicBlocksBuilder::new(),
             bb_ranges: HashMap::new(),
         }
     }
@@ -120,7 +120,6 @@ impl<'a> SubroutineBuilder<'a> {
         instructions: &mut Vec<Instruction>,
         leaders: &HashMap<Pc, BasicBlockId>,
     ) -> Result<Terminator> {
-        let mut insts: Vec<Instruction> = Vec::new();
         let terminator = loop {
             let instruction = self.rom.decode_instruction(*pc)?;
             println!("pc={:?}, {:?}", pc, instruction);
@@ -365,14 +364,14 @@ impl Instruction {
 }
 
 #[derive(Debug)]
-struct BasicBlocks {
+struct BasicBlocksBuilder {
     id_counter: usize,
     bbs: HashMap<BasicBlockId, BasicBlock>,
 }
 
-impl BasicBlocks {
-    fn new() -> BasicBlocks {
-        BasicBlocks {
+impl BasicBlocksBuilder {
+    fn new() -> BasicBlocksBuilder {
+        BasicBlocksBuilder {
             id_counter: 1, // 0 reserved for BasicBlockId::entry()
             bbs: HashMap::new(),
         }
@@ -404,6 +403,16 @@ impl BasicBlocks {
         }
 
         self.bbs
+    }
+}
+
+impl From<HashMap<BasicBlockId, BasicBlock>> for BasicBlocksBuilder {
+    fn from(map: HashMap<BasicBlockId, BasicBlock>) -> BasicBlocksBuilder {
+        let max_id = map.keys().map(|b| b.0).max().unwrap_or(0);
+        BasicBlocksBuilder {
+            id_counter: max_id + 1,
+            bbs: map
+        }
     }
 }
 
