@@ -4,6 +4,8 @@ use instruction::*;
 use error::*;
 use std::fmt;
 
+const ROM_START_ADDR: usize = 0x200;
+
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 struct Pc(usize);
 
@@ -15,7 +17,7 @@ impl Pc {
 
 impl From<Addr> for Pc {
     fn from(addr: Addr) -> Pc {
-        Pc(addr.0 as usize - 0x200)
+        Pc(addr.0 as usize - ROM_START_ADDR)
     }
 }
 
@@ -240,14 +242,14 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
     let mut subs = HashMap::new();
     let mut subroutine_stack: Vec<Addr> = Vec::new();
 
-    let start_subroutine_id = Addr(0x200);
+    let start_subroutine_id = RoutineId::start().0;
     subroutine_stack.push(start_subroutine_id);
 
     while let Some(subroutine_addr) = subroutine_stack.pop() {
         let mut sub_builder = SubroutineBuilder::new(Rom::new(rom), Pc::from(subroutine_addr));
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
-        if subroutine_addr.0 == 0x200 {
+        if RoutineId(subroutine_addr) == RoutineId::start() {
             // TODO: convert to Err
             assert!(!sub_builder.has_ret);
         }
@@ -312,6 +314,12 @@ impl fmt::Display for BasicBlockId {
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct RoutineId(pub Addr);
+
+impl RoutineId {
+    pub fn start() -> RoutineId {
+        RoutineId(Addr(ROM_START_ADDR as u16))
+    }
+}
 
 impl From<Addr> for RoutineId {
     fn from(addr: Addr) -> RoutineId {
