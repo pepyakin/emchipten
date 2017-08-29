@@ -97,6 +97,7 @@ fn trans(cfg: &cfg::CFG) {
     ctx.add_import("set_dt", vec![ValueTy::I32], Ty::none());
     ctx.add_import("set_st", vec![ValueTy::I32], Ty::none());
     ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
+    ctx.add_import("store_bcd", vec![ValueTy::I32, ValueTy::I32], Ty::none());
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder.add_global(
@@ -358,6 +359,12 @@ impl<'t> RoutineTransCtx<'t> {
                 let store_i_expr = self.store_i(shift_expr);
 
                 stmts.push(store_i_expr);
+            }
+            Instruction::StoreBCD(vx) => {
+                let vx_expr = self.load_reg(vx);
+                let i_expr = self.load_i();
+                let bcd_expr = self.trans_call_import("store_bcd", vec![vx_expr, i_expr], Ty::none());
+                stmts.push(bcd_expr);
             }
             _ => panic!("unimplemented: {:#?}", instruction),
         }
