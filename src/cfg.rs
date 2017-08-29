@@ -38,7 +38,7 @@ impl<'a> Rom<'a> {
             panic!("unimplemented");
         }
 
-        let actual_pc = pc.0 as usize;
+        let Pc(actual_pc) = pc;
         let instruction_word = InstructionWord(BigEndian::read_u16(&self.bytes[actual_pc..]));
 
         Instruction::decode(instruction_word)
