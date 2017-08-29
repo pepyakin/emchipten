@@ -98,6 +98,7 @@ fn trans(cfg: &cfg::CFG) {
     ctx.add_import("set_st", vec![ValueTy::I32], Ty::none());
     ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
     ctx.add_import("store_bcd", vec![ValueTy::I32, ValueTy::I32], Ty::none());
+    ctx.add_import("is_key_pressed", vec![ValueTy::I32], Ty::value(ValueTy::I32));
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder.add_global(
