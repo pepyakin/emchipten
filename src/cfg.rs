@@ -182,24 +182,24 @@ impl<'a> SubroutineBuilder<'a> {
                     }
                     Instruction::Jump(addr) => {
                         let target_pc = Pc::from(addr);
-                        if !leaders.contains_key(&target_pc) {
-                            leaders.insert(target_pc, self.bbs.gen_id());
+                        leaders.entry(target_pc).or_insert_with(|| {
                             stack.push(target_pc);
-                        }
+                            self.bbs.gen_id()
+                        });
                         break;
                     }
                     Instruction::Skip(_) => {
                         let next_pc = pc.advance(1);
                         let skip_pc = pc.advance(2);
 
-                        if !leaders.contains_key(&next_pc) {
-                            leaders.insert(next_pc, self.bbs.gen_id());
+                        leaders.entry(next_pc).or_insert_with(|| {
                             stack.push(next_pc);
-                        }
-                        if !leaders.contains_key(&skip_pc) {
-                            leaders.insert(skip_pc, self.bbs.gen_id());
+                            self.bbs.gen_id()
+                        });
+                        leaders.entry(skip_pc).or_insert_with(|| {
                             stack.push(skip_pc);
-                        }
+                            self.bbs.gen_id()
+                        });
                         break;
                     }
                     Instruction::Call(addr) => {
