@@ -22,8 +22,7 @@ pub fn trans(cfg: &cfg::CFG) {
         let segment_data = &FONT_SPRITES;
         let segment_offset_expr = ctx.builder.const_(Literal::I32(0));
         let segments = &[Segment::new(segment_data, segment_offset_expr)];
-        ctx.builder
-            .set_memory(1, 1, Some("mem".into()), segments);
+        ctx.builder.set_memory(1, 1, Some("mem".into()), segments);
     }
 
     ctx.add_import("clear_screen", &[], Ty::none());
@@ -38,30 +37,18 @@ pub fn trans(cfg: &cfg::CFG) {
     ctx.add_import("set_st", &[ValueTy::I32], Ty::none());
     ctx.add_import("wait_key", &[], Ty::value(ValueTy::I32));
     ctx.add_import("store_bcd", &[ValueTy::I32, ValueTy::I32], Ty::none());
-    ctx.add_import(
-        "is_key_pressed",
-        &[ValueTy::I32],
-        Ty::value(ValueTy::I32),
-    );
+    ctx.add_import("is_key_pressed", &[ValueTy::I32], Ty::value(ValueTy::I32));
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
-    ctx.builder.add_global(
-        "regI".into(),
-        ValueTy::I32,
-        true,
-        reg_i_init,
-    );
+    ctx.builder
+        .add_global("regI".into(), ValueTy::I32, true, reg_i_init);
 
     for i in 0..16 {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
         let init_expr = ctx.builder.const_(Literal::I32(0));
-        ctx.builder.add_global(
-            reg_name.into(),
-            ValueTy::I32,
-            true,
-            init_expr,
-        );
+        ctx.builder
+            .add_global(reg_name.into(), ValueTy::I32, true, init_expr);
     }
 
     let mut binaryen_routines = HashMap::new();
@@ -252,8 +239,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::AddI(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
-                let add_expr = self.builder
-                    .binary(BinaryOp::AddI32, vx_expr, load_i_expr);
+                let add_expr = self.builder.binary(BinaryOp::AddI32, vx_expr, load_i_expr);
                 let store_i_expr = self.store_i(add_expr);
                 // TODO: Wrapping
                 stmts.push(store_i_expr);
@@ -327,8 +313,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::StoreBCD(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let i_expr = self.load_i();
-                let bcd_expr =
-                    self.trans_call_import("store_bcd", &[vx_expr, i_expr], Ty::none());
+                let bcd_expr = self.trans_call_import("store_bcd", &[vx_expr, i_expr], Ty::none());
                 stmts.push(bcd_expr);
             }
             _ => panic!("unimplemented: {:#?}", instruction),
@@ -366,9 +351,8 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::AddI32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr =
-                    self.builder
-                        .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder
+                    .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -386,9 +370,8 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::SubI32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr =
-                    self.builder
-                        .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder
+                    .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -406,8 +389,7 @@ impl<'t> RoutineTransCtx<'t> {
                 // $result = y >> 1
                 // $vf = y & 0x01
                 let imm_1_expr = self.load_imm(1);
-                let shift_expr = self.builder
-                    .binary(BinaryOp::ShrUI32, vy_expr, imm_1_expr);
+                let shift_expr = self.builder.binary(BinaryOp::ShrUI32, vy_expr, imm_1_expr);
                 let store_result_expr = self.store_reg(vx, shift_expr);
                 stmts.push(store_result_expr);
 
@@ -421,9 +403,8 @@ impl<'t> RoutineTransCtx<'t> {
                 let add_expr = self.builder.binary(BinaryOp::SubI32, vy_expr, vx_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
                 let mask_imm_expr = self.load_imm(0xFFFF);
-                let mask_expr =
-                    self.builder
-                        .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
+                let mask_expr = self.builder
+                    .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
 
                 stmts.push(store_result_expr);
@@ -472,11 +453,8 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
-                let pressed_expr = self.trans_call_import(
-                    "is_key_pressed",
-                    &[vx_expr],
-                    Ty::value(ValueTy::I32),
-                );
+                let pressed_expr =
+                    self.trans_call_import("is_key_pressed", &[vx_expr], Ty::value(ValueTy::I32));
                 (pressed_expr, self.load_imm(1))
             }
         };
@@ -488,25 +466,21 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn load_i(&mut self) -> Expr {
-        self.builder
-            .get_global("regI".into(), ValueTy::I32)
+        self.builder.get_global("regI".into(), ValueTy::I32)
     }
 
     fn store_i(&mut self, value: Expr) -> Expr {
-        self.builder
-            .set_global("regI".into(), value)
+        self.builder.set_global("regI".into(), value)
     }
 
     fn load_reg(&mut self, reg: Reg) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder
-            .get_global(reg_name.into(), ValueTy::I32)
+        self.builder.get_global(reg_name.into(), ValueTy::I32)
     }
 
     fn store_reg(&mut self, reg: Reg, value: Expr) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder
-            .set_global(reg_name.into(), value)
+        self.builder.set_global(reg_name.into(), value)
     }
 
     fn load_imm(&mut self, c: u32) -> Expr {
