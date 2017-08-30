@@ -57,10 +57,6 @@ impl BBRange {
         BBRange { start, end }
     }
 
-    fn contains(&self, pc: Pc) -> bool {
-        self.start <= pc && self.end >= pc
-    }
-
     fn intersects(&self, other: &BBRange) -> bool {
         self.start <= other.end && other.start <= self.end
     }
@@ -346,18 +342,6 @@ impl BasicBlock {
     pub fn terminator(&self) -> Terminator {
         self.terminator
     }
-
-    pub fn split(&mut self, split_offset: usize, second_bb_id: BasicBlockId) -> BasicBlock {
-        // Split instructions between BBs.
-        let insts2 = self.insts.split_off(split_offset);
-        let bb2 = BasicBlock::new(insts2, self.terminator);
-
-        self.terminator = Terminator::Jump {
-            target: second_bb_id,
-        };
-
-        bb2
-    }
 }
 
 impl Instruction {
@@ -394,15 +378,6 @@ impl BasicBlocksBuilder {
     fn insert(&mut self, id: BasicBlockId, basic_block: BasicBlock) {
         let existing_value = self.bbs.insert(id, basic_block);
         assert!(existing_value.is_none());
-    }
-
-    fn split(&mut self, id: BasicBlockId, offspring_bb_id: BasicBlockId, split_offset: usize) {
-        // TODO: inline splint fn?
-        let offspring_bb = self.bbs
-            .get_mut(&id)
-            .expect("specified BasicBlock should be inserted")
-            .split(split_offset, offspring_bb_id);
-        self.insert(offspring_bb_id, offspring_bb);
     }
 
     fn into_map(self) -> HashMap<BasicBlockId, BasicBlock> {
@@ -477,15 +452,6 @@ impl CFG {
             self.print_routine(subroutine);
         }
     }
-}
-
-#[test]
-fn test_bbrange_contains() {
-    let bb = BBRange::new(Pc(0), Pc(2));
-    assert!(bb.contains(Pc(0)));
-    assert!(bb.contains(Pc(1)));
-    assert!(bb.contains(Pc(2)));
-    assert!(!bb.contains(Pc(3)));
 }
 
 #[test]
