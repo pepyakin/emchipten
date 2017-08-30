@@ -479,47 +479,6 @@ impl CFG {
     }
 }
 
-pub fn inline(mut cfg: CFG) -> Routine {
-    // Нужно пойти с Start routine, инструкция за инструкцией.
-    // Как только обнаружим call F:
-    // - нужно разделить текущий BB(bs, be) на BB1(bs, call_pc - 2) и exit: BB2(call_pc + 2, be)
-    // - вставить все F.bbs в start.bbs
-    // - пройтись по всем F.bbs, если terminator == Ret нужно его изменить на Jump { target: exit }
-    //
-    // NOTE: BBID могут колизиться?
-
-    let mut bb_queue = Vec::new();
-
-    let start_routine_id = cfg.start;
-    let start_routine = cfg.subroutines
-        .get_mut(&start_routine_id)
-        .expect("start should be inside subroutines map");
-    bb_queue.push(start_routine.entry);
-
-    while let Some(bb_id) = bb_queue.pop() {
-        let mut bb = start_routine.bbs.remove(&bb_id).unwrap();
-
-        fn is_call(inst: &Instruction) -> bool {
-            if let &Instruction::Call(_) = inst {
-                true
-            } else {
-                false
-            }
-        }
-
-        if let Some(call_position) = bb.instructions().iter().position(is_call) {
-            // let bb2 = bb.split(call_position);
-
-            // start_routine.bbs.insert(bb_id, bb);
-            // start_routine.bbs.insert(panic!(), bb2); // TODO:
-        } else {
-            start_routine.bbs.insert(bb_id, bb);
-        }
-    }
-
-    panic!()
-}
-
 #[test]
 fn test_bbrange_contains() {
     let bb = BBRange::new(Pc(0), Pc(2));
