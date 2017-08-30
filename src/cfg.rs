@@ -419,7 +419,7 @@ impl From<HashMap<BasicBlockId, BasicBlock>> for BasicBlocksBuilder {
         let max_id = map.keys().map(|b| b.0).max().unwrap_or(0);
         BasicBlocksBuilder {
             id_counter: max_id + 1,
-            bbs: map
+            bbs: map,
         }
     }
 }

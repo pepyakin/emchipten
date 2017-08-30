@@ -38,7 +38,10 @@ fn main() {
     use std::env::args;
 
     let filename = args().nth(1).unwrap();
+    build_rom(&filename);
+}
 
+pub fn build_rom(filename: &str) {
     let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
     let cfg = cfg::build_cfg(&rom_buffer).unwrap();
@@ -98,7 +101,11 @@ fn trans(cfg: &cfg::CFG) {
     ctx.add_import("set_st", vec![ValueTy::I32], Ty::none());
     ctx.add_import("wait_key", vec![], Ty::value(ValueTy::I32));
     ctx.add_import("store_bcd", vec![ValueTy::I32, ValueTy::I32], Ty::none());
-    ctx.add_import("is_key_pressed", vec![ValueTy::I32], Ty::value(ValueTy::I32));
+    ctx.add_import(
+        "is_key_pressed",
+        vec![ValueTy::I32],
+        Ty::value(ValueTy::I32),
+    );
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder.add_global(
@@ -364,7 +371,8 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::StoreBCD(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let i_expr = self.load_i();
-                let bcd_expr = self.trans_call_import("store_bcd", vec![vx_expr, i_expr], Ty::none());
+                let bcd_expr =
+                    self.trans_call_import("store_bcd", vec![vx_expr, i_expr], Ty::none());
                 stmts.push(bcd_expr);
             }
             _ => panic!("unimplemented: {:#?}", instruction),
@@ -590,4 +598,48 @@ fn func_name_from_addr(addr: Addr) -> String {
 
 fn get_reg_name(reg: Reg) -> String {
     format!("V{}", reg.index())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_rom;
+    const TEST_ROMS: &[&'static str] = &[
+        "15PUZZLE",
+        "BLINKY",
+        "15PUZZLE",
+        "BLINKY",
+        "BLITZ",
+        "BRIX",
+        "CONNECT4",
+        "GUESS",
+        "HIDDEN",
+        // "INVADERS", endless loop
+        "KALEID",
+        "MAZE",
+        "MERLIN",
+        "MISSILE",
+        "PONG",
+        "PONG2",
+        "PUZZLE",
+        "SYZYGY",
+        "TANK",
+        "TETRIS",
+        "TICTAC",
+        "UFO",
+        "VBRIX",
+        "VERS",
+        "WIPEOFF",
+        // "ZERO", unexpected EOF
+    ];
+
+    #[test]
+    fn compile_roms() {
+        use std::{thread, time};;
+
+        for rom in TEST_ROMS {
+            let rom_filename = format!("roms/{}", rom);
+            println!("building {}:", rom);
+            build_rom(&rom_filename);
+        }
+    }
 }
