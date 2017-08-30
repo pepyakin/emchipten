@@ -93,7 +93,7 @@ fn dump(buf: &[u8], filename: &str) {
     use std::fs::File;
     use std::io::Write;
     let mut file = File::create(filename).unwrap();
-    file.write_all(&buf).unwrap();
+    file.write_all(buf).unwrap();
 }
 
 struct TransCtx<'a> {
