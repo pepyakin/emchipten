@@ -207,7 +207,11 @@ impl<'t> RoutineTransCtx<'t> {
                 let imm_expr = self.load_imm(imm.0 as u32);
                 let load_expr = self.load_reg(vx);
                 let add_expr = self.builder.binary(BinaryOp::AddI32, load_expr, imm_expr);
-                stmts.push(self.store_reg(vx, add_expr));
+                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_expr = self.builder
+                    .binary(BinaryOp::AndI32, add_expr, mask_imm_expr);
+                let store_result_expr = self.store_reg(vx, mask_expr);
+                stmts.push(store_result_expr);
             }
             Instruction::Apply { vx, vy, f } => {
                 self.trans_apply(vx, vy, f, stmts);
