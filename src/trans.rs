@@ -22,7 +22,7 @@ pub fn trans(cfg: &cfg::CFG) {
         let segment_data = &FONT_SPRITES;
         let segment_offset_expr = ctx.builder.const_(Literal::I32(0));
         let segments = &[Segment::new(segment_data, segment_offset_expr)];
-        ctx.builder.set_memory(1, 1, Some("mem".into()), segments);
+        ctx.builder.set_memory(1, 1, Some(&"mem".into()), segments);
     }
 
     ctx.add_import("clear_screen", &[], Ty::none());
@@ -41,14 +41,14 @@ pub fn trans(cfg: &cfg::CFG) {
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder
-        .add_global("regI".into(), ValueTy::I32, true, reg_i_init);
+        .add_global(&"regI".into(), ValueTy::I32, true, reg_i_init);
 
     for i in 0..16 {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
         let init_expr = ctx.builder.const_(Literal::I32(0));
         ctx.builder
-            .add_global(reg_name.into(), ValueTy::I32, true, init_expr);
+            .add_global(&reg_name.into(), ValueTy::I32, true, init_expr);
     }
 
     let mut binaryen_routines = HashMap::new();
@@ -93,7 +93,7 @@ impl<'a> TransCtx<'a> {
     fn add_import(&mut self, name: &str, param_tys: &[ValueTy], result_ty: Ty) {
         let fn_ty = self.builder.add_fn_type(None, param_tys, result_ty);
         self.builder
-            .add_import(name.into(), "env".into(), name.into(), &fn_ty)
+            .add_import(&name.into(), &"env".into(), &name.into(), &fn_ty)
     }
 }
 
@@ -163,7 +163,7 @@ impl<'t> RoutineTransCtx<'t> {
         let body_code = relooper.render(self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
         let var_types = &[ValueTy::I32, ValueTy::I32];
         self.builder.add_fn(
-            func_name_from_addr(self.routine_id.0).into(),
+            &func_name_from_addr(self.routine_id.0).into(),
             self.procedure_fn_ty,
             var_types,
             body_code,
@@ -192,7 +192,7 @@ impl<'t> RoutineTransCtx<'t> {
         match *instruction {
             Instruction::Call(addr) => {
                 let routine_name = func_name_from_addr(addr).into();
-                let call_expr = self.builder.call(routine_name, &[]);
+                let call_expr = self.builder.call(&routine_name, &[]);
                 stmts.push(call_expr);
             }
             Instruction::ClearScreen => {
@@ -440,7 +440,7 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn trans_call_import(&mut self, name: &str, operands: &[Expr], result_ty: Ty) -> Expr {
-        self.builder.call_import(name.into(), operands, result_ty)
+        self.builder.call_import(&name.into(), operands, result_ty)
     }
 
     fn trans_predicate(&mut self, predicate: Predicate) -> Expr {
@@ -470,21 +470,21 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn load_i(&mut self) -> Expr {
-        self.builder.get_global("regI".into(), ValueTy::I32)
+        self.builder.get_global(&"regI".into(), ValueTy::I32)
     }
 
     fn store_i(&mut self, value: Expr) -> Expr {
-        self.builder.set_global("regI".into(), value)
+        self.builder.set_global(&"regI".into(), value)
     }
 
     fn load_reg(&mut self, reg: Reg) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.get_global(reg_name.into(), ValueTy::I32)
+        self.builder.get_global(&reg_name.into(), ValueTy::I32)
     }
 
     fn store_reg(&mut self, reg: Reg, value: Expr) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.set_global(reg_name.into(), value)
+        self.builder.set_global(&reg_name.into(), value)
     }
 
     fn load_imm(&mut self, c: u32) -> Expr {
