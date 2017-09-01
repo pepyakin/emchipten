@@ -32,7 +32,7 @@ class Env {
         var collision = 0;
         for (var y = 0; y < n; y++) {
             var dy = (y0 + y) % DISPLAY_HEIGHT;
-            var spr = HEAP8[i + y]|0;
+            var spr = HEAP8[i + y];
             for (var x = 0; x < 8; x++) {
                 if ((spr & 0x80) > 0) {
                     var dx = (x0 + x) % DISPLAY_WIDTH;
@@ -50,7 +50,6 @@ class Env {
     }
     get_dt() {
         let dt = Atomics.load(SHEAP8, DT_MEM_OFFSET)|0 & 0xFF;
-        console.log("get_dt()=" + dt);
         return dt;
     }
     set_dt(dt) {
@@ -66,10 +65,6 @@ class Env {
         Atomics.wait(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
         let lastPressedKey = Atomics.load(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET);
         Atomics.store(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
-        // var lastPressedKey = 0xFF;
-        // while (lastPressedKey == 0xff) {
-        //     lastPressedKey = Atomics.load(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET);
-        // }
         console.log("wait_key()=" + lastPressedKey);
         return lastPressedKey;
     }

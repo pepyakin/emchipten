@@ -119,8 +119,6 @@ function start(wasmFilename) {
     setInterval(function() {
         let newDt = decrementTimer(SHEAP8, DT_MEM_OFFSET);
         let newSt = decrementTimer(SHEAP8, ST_MEM_OFFSET);
-
-        console.log("newDt=" + newDt + ", newSt=" + newSt);
     }, 1000 / 60);
 
     Atomics.store(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
