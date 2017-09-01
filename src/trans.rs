@@ -363,7 +363,7 @@ impl<'t> RoutineTransCtx<'t> {
 
                 let add_expr = self.builder.binary(BinaryOp::AddI32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
-                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_imm_expr = self.load_imm(0xFF);
                 let mask_expr = self.builder
                     .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
@@ -382,7 +382,7 @@ impl<'t> RoutineTransCtx<'t> {
             Fun::Subtract => {
                 let add_expr = self.builder.binary(BinaryOp::SubI32, vx_expr, vy_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
-                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_imm_expr = self.load_imm(0xFF);
                 let mask_expr = self.builder
                     .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
@@ -415,7 +415,7 @@ impl<'t> RoutineTransCtx<'t> {
             Fun::SubtractInv => {
                 let add_expr = self.builder.binary(BinaryOp::SubI32, vy_expr, vx_expr);
                 let tee_tmp_expr = self.builder.tee_local(TMP_LOCAL, add_expr);
-                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_imm_expr = self.load_imm(0xFF);
                 let mask_expr = self.builder
                     .binary(BinaryOp::AndI32, tee_tmp_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
