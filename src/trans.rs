@@ -235,7 +235,7 @@ impl<'t> RoutineTransCtx<'t> {
                 let imm_expr = self.load_imm(imm.0 as u32);
                 let load_expr = self.load_reg(vx);
                 let add_expr = self.builder.binary(BinaryOp::AddI32, load_expr, imm_expr);
-                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_imm_expr = self.load_imm(0xFF);
                 let mask_expr = self.builder
                     .binary(BinaryOp::AndI32, add_expr, mask_imm_expr);
                 let store_result_expr = self.store_reg(vx, mask_expr);
