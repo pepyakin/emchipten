@@ -331,16 +331,12 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_i_expr);
             },
             Instruction::LoadGlyph(vx) => {
-                // (vx & 0xf) << 3
+                // (vx * 5)
                 let vx_expr = self.load_reg(vx);
-                let mask_imm_expr = self.load_imm(0x0f);
-                let mask_expr = self.builder
-                    .binary(BinaryOp::AndI32, vx_expr, mask_imm_expr);
-                let shift_imm_expr = self.load_imm(3);
-                let shift_expr = self.builder
-                    .binary(BinaryOp::ShlI32, mask_expr, shift_imm_expr);
-                let store_i_expr = self.store_i(shift_expr);
-
+                let imm_expr = self.load_imm(0x05);
+                let result_expr = self.builder
+                    .binary(BinaryOp::MulI32, vx_expr, imm_expr);
+                let store_i_expr = self.store_i(result_expr);
                 stmts.push(store_i_expr);
             }
             Instruction::StoreBCD(vx) => {
