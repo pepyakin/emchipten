@@ -265,7 +265,7 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_expr);
             }
             Instruction::SetI(addr) => {
-                let imm_expr = self.load_imm(addr.0 as u32);
+                let imm_expr = self.load_imm(addr.0 as u32 & 0xFFF);
                 let store_i_expr = self.store_i(imm_expr);
                 stmts.push(store_i_expr);
             }
@@ -273,8 +273,10 @@ impl<'t> RoutineTransCtx<'t> {
                 let vx_expr = self.load_reg(vx);
                 let load_i_expr = self.load_i();
                 let add_expr = self.builder.binary(BinaryOp::AddI32, vx_expr, load_i_expr);
-                let store_i_expr = self.store_i(add_expr);
-                // TODO: Wrapping
+                let mask_imm_expr = self.load_imm(0xFFFF);
+                let mask_expr = self.builder
+                    .binary(BinaryOp::AndI32, add_expr, mask_imm_expr);
+                let store_i_expr = self.store_i(mask_expr);
                 stmts.push(store_i_expr);
             }
             Instruction::GetDT(vx) => {
