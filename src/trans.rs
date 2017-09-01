@@ -5,7 +5,7 @@ use cfg;
 
 use std::collections::HashMap;
 
-pub fn trans(cfg: &cfg::CFG) {
+pub fn trans(rom: &[u8], cfg: &cfg::CFG) {
     let mut builder = Module::new();
 
     let procedure_fn_ty = builder.add_fn_type(None, &[], Ty::none());
@@ -19,9 +19,13 @@ pub fn trans(cfg: &cfg::CFG) {
     ctx.builder.auto_drop();
 
     {
-        let segment_data = &FONT_SPRITES;
-        let segment_offset_expr = ctx.builder.const_(Literal::I32(0));
-        let segments = &[Segment::new(segment_data, segment_offset_expr)];
+        let font_segment = Segment::new(&FONT_SPRITES, ctx.builder.const_(Literal::I32(0)));
+        let rom_segment = Segment::new(rom, ctx.builder.const_(Literal::I32(512)));
+
+        let segments = &[
+            font_segment,
+            rom_segment
+        ];
         ctx.builder.set_memory(1, 1, Some(&"mem".into()), segments);
     }
 
@@ -29,7 +33,7 @@ pub fn trans(cfg: &cfg::CFG) {
     ctx.add_import("random", &[], Ty::value(ValueTy::I32));
     ctx.add_import(
         "draw",
-        &[ValueTy::I32, ValueTy::I32, ValueTy::I32],
+        &[ValueTy::I32, ValueTy::I32, ValueTy::I32, ValueTy::I32],
         Ty::value(ValueTy::I32),
     );
     ctx.add_import("get_dt", &[], Ty::value(ValueTy::I32));
@@ -62,8 +66,10 @@ pub fn trans(cfg: &cfg::CFG) {
         binaryen_routines.insert(routine_id, binaryen_fn_ref);
     }
 
-    let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
-    ctx.builder.set_start(start_binaryen_fn);
+    // let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
+    // ctx.builder.set_start(start_binaryen_fn);
+
+    ctx.builder.add_export(&"routine_512".into(), &"routine_512".into());
 
     if !ctx.builder.is_valid() {
         panic!("module is not valid");
@@ -227,9 +233,10 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::Draw { vx, vy, n } => {
                 let x_expr = self.load_reg(vx);
                 let y_expr = self.load_reg(vy);
+                let load_i_expr = self.load_i();
                 let n_expr = self.load_imm(n.0 as u32);
 
-                let operands = &[x_expr, y_expr, n_expr];
+                let operands = &[x_expr, y_expr, load_i_expr, n_expr];
                 let draw_expr = self.trans_call_import("draw", operands, Ty::value(ValueTy::I32));
                 let store_expr = self.store_reg(Reg::Vf, draw_expr);
 

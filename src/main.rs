@@ -41,7 +41,7 @@ pub fn build_rom(filename: &str) {
     println!("{:#?}", cfg);
     cfg.print();
 
-    trans(&cfg);
+    trans(&rom_buffer, &cfg);
 }
 
 #[cfg(test)]
