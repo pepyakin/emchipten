@@ -5,7 +5,24 @@ use cfg;
 
 use std::collections::HashMap;
 
-pub fn trans(rom: &[u8], cfg: &cfg::CFG) {
+#[derive(Debug, Clone)]
+pub struct Opts<'a> {
+    pub out_file: Option<&'a str>,
+    pub optimize: bool,
+    pub print: bool,
+}
+
+impl<'a> Default for Opts<'a> {
+    fn default() -> Opts<'a> {
+        Opts {
+            out_file: None,
+            optimize: true,
+            print: false
+        }
+    }
+}
+
+pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) {
     let mut builder = Module::new();
 
     let procedure_fn_ty = builder.add_fn_type(None, &[], Ty::none());
@@ -22,10 +39,7 @@ pub fn trans(rom: &[u8], cfg: &cfg::CFG) {
         let font_segment = Segment::new(&FONT_SPRITES, ctx.builder.const_(Literal::I32(0)));
         let rom_segment = Segment::new(rom, ctx.builder.const_(Literal::I32(512)));
 
-        let segments = &[
-            font_segment,
-            rom_segment
-        ];
+        let segments = &[font_segment, rom_segment];
         ctx.builder.set_memory(1, 1, Some(&"mem".into()), segments);
     }
 
@@ -69,17 +83,25 @@ pub fn trans(rom: &[u8], cfg: &cfg::CFG) {
     // let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
     // ctx.builder.set_start(start_binaryen_fn);
 
-    ctx.builder.add_export(&"routine_512".into(), &"routine_512".into());
+    ctx.builder
+        .add_export(&"routine_512".into(), &"routine_512".into());
 
     if !ctx.builder.is_valid() {
         panic!("module is not valid");
     }
 
-    ctx.builder.optimize();
-    ctx.builder.print();
+    if opts.optimize {
+        ctx.builder.optimize();
+    }
 
-    let buf = ctx.builder.write();
-    dump(&buf, "out.wasm");
+    if opts.print {
+        ctx.builder.print();
+    }
+
+    if let Some(out_file) = opts.out_file {
+        let buf = ctx.builder.write();
+        dump(&buf, out_file);
+    }
 }
 
 fn dump(buf: &[u8], filename: &str) {

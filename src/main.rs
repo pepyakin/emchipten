@@ -2,10 +2,13 @@
 
 extern crate binaryen;
 extern crate byteorder;
+extern crate docopt;
 #[macro_use]
 extern crate enum_primitive;
 #[macro_use]
 extern crate error_chain;
+#[macro_use]
+extern crate serde_derive;
 
 mod instruction;
 mod error;
@@ -13,10 +16,32 @@ mod cfg;
 mod trans;
 
 pub use error::*;
-use trans::trans;
 
 use std::fs::File;
 use std::path::Path;
+
+use docopt::Docopt;
+
+const USAGE: &'static str = "
+emchipten - compile CHIP-8 into WebAssembly.
+
+Usage:
+  emchipten [-o <out>] <rom-file>
+
+Options:
+  -h, --help      Show this screen.
+  -o <out>        Output file
+  --optimize      Optimize resulting rom
+  --print         Print compiled wasm s-expressions
+";
+
+#[derive(Debug, Deserialize)]
+struct Args {
+    flag_o: Option<String>,
+    arg_rom_file: String,
+    flag_optimize: bool,
+    flag_print: bool,
+}
 
 fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
     use std::io::Read;
@@ -28,25 +53,33 @@ fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
 }
 
 fn main() {
-    use std::env::args;
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.deserialize())
+        .unwrap_or_else(|e| e.exit());
 
-    let filename = args().nth(1).unwrap();
-    build_rom(&filename);
+    let opts = trans::Opts {
+        optimize: args.flag_optimize,
+        print: args.flag_print,
+        out_file: args.flag_o.as_ref().map(|s| s.as_ref()),
+        ..Default::default()
+    };
+    println!("{:?}", opts);
+    build_rom(&args.arg_rom_file, opts);
 }
 
-pub fn build_rom(filename: &str) {
+pub fn build_rom(filename: &str, opts: trans::Opts) {
     let rom_buffer = read_rom(filename).unwrap();
     println!("{:?}", rom_buffer);
     let cfg = cfg::build_cfg(&rom_buffer).unwrap();
     println!("{:#?}", cfg);
     cfg.print();
 
-    trans(&rom_buffer, &cfg);
+    trans::trans_rom(&rom_buffer, &cfg, opts);
 }
 
 #[cfg(test)]
 mod tests {
-    use super::build_rom;
+    use super::{build_rom, trans};
     const TEST_ROMS: &[&'static str] = &[
         "15PUZZLE",
         "BLINKY",
@@ -81,7 +114,10 @@ mod tests {
         for rom in TEST_ROMS {
             let rom_filename = format!("roms/{}", rom);
             println!("building {}:", rom);
-            build_rom(&rom_filename);
+            let opts = trans::Opts {
+                ..Default::default()
+            };
+            build_rom(&rom_filename, opts);
         }
     }
 }
