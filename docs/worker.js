@@ -49,7 +49,7 @@ class Env {
         return collision;
     }
     get_dt() {
-        let dt = Atomics.load(SHEAP8, DT_MEM_OFFSET);
+        let dt = Atomics.load(SHEAP8, DT_MEM_OFFSET)|0 & 0xFF;
         console.log("get_dt()=" + dt);
         return dt;
     }

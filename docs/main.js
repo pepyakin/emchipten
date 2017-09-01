@@ -45,11 +45,24 @@ class Renderer {
     }
 }
 
-function render(renderer, videoMem) {
-    renderer.render(videoMem);
+function render(renderer, mem) {
+    renderer.render(mem);
     requestAnimationFrame(function() {
-        render(renderer, videoMem);
+        render(renderer, mem);
     });
+}
+
+function decrementTimer(mem, timerOffset) {
+    while (true) {
+        let oldValue = Atomics.load(mem, timerOffset);
+        let newValue = oldValue - 1;
+        if (newValue < 0) {
+            newValue = 0;
+        }
+        if (oldValue == Atomics.compareExchange(mem, timerOffset, oldValue, newValue)) {
+            return newValue;
+        }
+    }
 }
 
 function start(wasmFilename) {    
@@ -102,6 +115,13 @@ function start(wasmFilename) {
         }
     }, false);
 
+    setInterval(function() {
+        let newDt = decrementTimer(SHEAP8, DT_MEM_OFFSET);
+        let newSt = decrementTimer(SHEAP8, ST_MEM_OFFSET);
+
+        console.log("newDt=" + newDt + ", newSt=" + newSt);
+    }, 1000 / 60);
+
     Atomics.store(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
     
     worker.postMessage({
@@ -112,3 +132,5 @@ function start(wasmFilename) {
 
     render(renderer, SHEAP8);
 }
+
+
