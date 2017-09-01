@@ -1,77 +1,58 @@
-function instantiate(bytes, imports) {
-    return WebAssembly
-        .compile(bytes)
-        .then(m => new WebAssembly.Instance(m, imports));
+class Renderer {
+    constructor(canvas, width, height, cellSize) {
+        this.ctx = canvas.getContext("2d");
+        this.canvas = canvas;
+        this.width = width;
+        this.height = height;
+        this.cellSize = cellSize;
+        this.canvas.width = cellSize * this.width;
+        this.canvas.height = cellSize * this.height;
+        this.fgColor = "#fff";
+        this.bgColor = "#000";
+    }
+
+    clear() {
+        this.ctx.clearRect(
+            0, 
+            0, 
+            this.width * this.cellSize, 
+            this.height * this.cellSize
+        );
+    }
+
+    render(display) {
+        this.clear();
+        var i, x, y;
+        for (i = 0; i < display.length; i++) {
+            x = (i % this.width) * this.cellSize;
+            y = Math.floor(i / this.width) * this.cellSize;
+
+            if (display[i] == 1) {
+                this.ctx.fillStyle = this.fgColor;
+            } else {
+                this.ctx.fillStyle = this.bgColor;
+            }
+            this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+        }
+    }
 }
 
-var DISPLAY_WIDTH = 64;
-var DISPLAY_HEIGHT = 32;
+var canvas = document.querySelector("canvas");
+var renderer = new Renderer(canvas, 64, 32, 8);
 
-var memory;
-var HEAP8;
-var display = Array(DISPLAY_WIDTH * DISPLAY_HEIGHT);
+var worker = new Worker('worker.js');
+worker.onmessage = function (msg) {
+    switch (msg.data.type) {
+        case "render":
+            renderer.render(msg.data.data);
+            break;
 
-var importObject = {
-    env: {
-        random: function() {
-            function getRandomInt(min, max) {
-                return Math.floor(Math.random() * (max - min)) + min;
-            }
-            return getRandomInt(0, 256);
-        },
-        draw: function(x0, y0, i, n) {
-            var collision = 0;
-            for (var y = 0; y < n; y++) {
-                var dy = (y0 + y) % DISPLAY_HEIGHT;
-                var spr = HEAP8[i + y];
-                for (var x = 0; x < 8; x++) {
-                    if ((spr & 0x80) > 0) {
-                        var dx = (x0 + x) % DISPLAY_WIDTH;
-                        var index = dy * DISPLAY_WIDTH + dx;
-
-                        if (display[index] != 0) {
-                            collision = 1;
-                        }
-                        display[index] ^= 1;
-                    }
-                    spr <<= 1;
-                }
-            }
-            return collision;
-        },
-        get_dt: function() {
-            return 0;
-        },
-        set_dt: function(dt) {
-        },
-        set_st: function(st) {
-            console.log("st = " + st);
-        },
-        wait_key: function() {
-            console.log("wait_key()");
-            return 0;
-        },
-        clear_screen: function() {
-            console.log("clear_screen");
-        },
-        is_key_pressed: function(key) {
-            console.log("is_key_pressed(key=" + key + ")");
-            return 0;
-        },
-        store_bcd: function(value, i) {
-            console.log("store_bcd(value=" + value + ", i=" + i + ")");
-        }
+        case "clear":
+            renderer.clear();
+            break;
     }
 };
 
-console.log("instantiating wasm...");
-
-fetch('out.wasm')
-    .then(response => response.arrayBuffer())
-    .then(bytes => instantiate(bytes, importObject))
-    .then(instance => {
-        console.log("instance=" + instance);
-        memory = instance.exports.mem;
-        HEAP8 = new Int8Array(memory.buffer);
-        instance.exports.routine_512();
-    });
+worker.postMessage({
+    type: "start"
+});
