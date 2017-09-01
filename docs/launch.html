@@ -13,7 +13,13 @@
 <body>
     <canvas></canvas>
     <script src="main.js">
-
+    </script>
+    <script>
+        let romNameHash = window.location.hash;
+        if (romNameHash !== "") {
+            var romName = romNameHash.substring(1);
+            start(romName);
+        }
     </script>
 </body>
 

@@ -20,14 +20,14 @@ class Renderer {
         );
     }
 
-    render(display) {
+    render(videoMem) {
         this.clear();
         var i, x, y;
-        for (i = 0; i < display.length; i++) {
+        for (i = 0; i < (64 * 32); i++) {
             x = (i % this.width) * this.cellSize;
             y = Math.floor(i / this.width) * this.cellSize;
 
-            if (display[i] == 1) {
+            if (Atomics.load(videoMem, i) == 1) {
                 this.ctx.fillStyle = this.fgColor;
             } else {
                 this.ctx.fillStyle = this.bgColor;
@@ -37,22 +37,29 @@ class Renderer {
     }
 }
 
-var canvas = document.querySelector("canvas");
-var renderer = new Renderer(canvas, 64, 32, 8);
+function render(renderer, videoMem) {
+    renderer.render(videoMem);
+    requestAnimationFrame(function() {
+        render(renderer, videoMem);
+    });
+}
 
-var worker = new Worker('worker.js');
-worker.onmessage = function (msg) {
-    switch (msg.data.type) {
-        case "render":
-            renderer.render(msg.data.data);
-            break;
+function start(wasmFilename) {    
+    var canvas = document.querySelector("canvas");
+    let sab = new SharedArrayBuffer(8192);
+    let renderer = new Renderer(canvas, 64, 32, 8);
 
-        case "clear":
-            renderer.clear();
-            break;
-    }
-};
+    var worker = new Worker('worker.js');
+    worker.onmessage = function (msg) {
+        console.log("main received: " + msg.data);
+    };
+    
+    worker.postMessage({
+        type: "start",
+        wasmFilename,
+        sab
+    });
 
-worker.postMessage({
-    type: "start"
-});
+    let videoMem = new Int8Array(sab);
+    render(renderer, videoMem);
+}
