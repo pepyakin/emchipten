@@ -10,11 +10,9 @@ class Renderer {
     constructor(canvas, width, height, cellSize) {
         this.ctx = canvas.getContext("2d");
         this.canvas = canvas;
-        this.width = width;
-        this.height = height;
         this.cellSize = cellSize;
-        this.canvas.width = cellSize * this.width;
-        this.canvas.height = cellSize * this.height;
+        this.canvas.width = cellSize * DISPLAY_WIDTH;
+        this.canvas.height = cellSize * DISPLAY_HEIGHT;
         this.fgColor = "#fff";
         this.bgColor = "#000";
     }
@@ -23,8 +21,8 @@ class Renderer {
         this.ctx.clearRect(
             0, 
             0, 
-            this.width * this.cellSize, 
-            this.height * this.cellSize
+            DISPLAY_WIDTH * this.cellSize, 
+            DISPLAY_HEIGHT * this.cellSize
         );
     }
 
@@ -32,8 +30,8 @@ class Renderer {
         this.clear();
         var i, x, y;
         for (i = 0; i < (DISPLAY_WIDTH * DISPLAY_HEIGHT); i++) {
-            x = (i % this.width) * this.cellSize;
-            y = Math.floor(i / this.width) * this.cellSize;
+            x = (i % DISPLAY_WIDTH) * this.cellSize;
+            y = Math.floor(i / DISPLAY_WIDTH) * this.cellSize;
 
             if (Atomics.load(videoMem, DISPLAY_MEM_OFFSET + i) != 0) {
                 this.ctx.fillStyle = this.fgColor;
@@ -101,6 +99,9 @@ function start(wasmFilename) {
         var key = keyMapping[String.fromCharCode(event.which)];
         console.log("keydown=" + key);
         if (key !== undefined) {
+            if (key < 0x00 || key > 0x0F) {
+                throw "key=" + key;
+            }
             Atomics.store(SHEAP8, KEYBOARD_MEM_OFFSET + key, 1);
             Atomics.store(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, key);
             Atomics.wake(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET);
@@ -132,5 +133,3 @@ function start(wasmFilename) {
 
     render(renderer, SHEAP8);
 }
-
-
