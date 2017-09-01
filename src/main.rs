@@ -26,7 +26,7 @@ const USAGE: &'static str = "
 emchipten - compile CHIP-8 into WebAssembly.
 
 Usage:
-  emchipten [-o <out>] <rom-file>
+  emchipten [-o <out>|--optimize|--print] <rom-file>
 
 Options:
   -h, --help      Show this screen.
