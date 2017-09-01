@@ -302,33 +302,15 @@ impl<'t> RoutineTransCtx<'t> {
             }
             Instruction::LoadRegs(vx) => for offset in 0..(vx.index() as usize + 1) {
                 let reg = Reg::from_index(offset as u8);
-                let load_mem_expr = self.load_mem_at_i();
-                let store_expr = self.store_reg(reg, load_mem_expr);
-                stmts.push(store_expr);
-
-                let imm_1_expr = self.load_imm(1);
-                let load_i_expr = self.load_i();
-                let increment_i_expr =
-                    self.builder
-                        .binary(BinaryOp::AddI32, imm_1_expr, load_i_expr);
-                let store_i_expr = self.store_i(increment_i_expr);
-
-                stmts.push(store_i_expr);
+                let load_mem_expr = self.load_mem_at_i(offset as u32);
+                let store_reg_expr = self.store_reg(reg, load_mem_expr);
+                stmts.push(store_reg_expr);
             },
             Instruction::StoreRegs(vx) => for offset in 0..(vx.index() as usize + 1) {
                 let reg = Reg::from_index(offset as u8);
-                let load_expr = self.load_reg(reg);
-                let store_mem_expr = self.store_mem_at_i(load_expr);
+                let load_reg_expr = self.load_reg(reg);
+                let store_mem_expr = self.store_mem_at_i(load_reg_expr, offset as u32);
                 stmts.push(store_mem_expr);
-
-                let imm_1_expr = self.load_imm(1);
-                let load_i_expr = self.load_i();
-                let increment_i_expr =
-                    self.builder
-                        .binary(BinaryOp::AddI32, imm_1_expr, load_i_expr);
-                let store_i_expr = self.store_i(increment_i_expr);
-
-                stmts.push(store_i_expr);
             },
             Instruction::LoadGlyph(vx) => {
                 // (vx * 5)
@@ -516,14 +498,14 @@ impl<'t> RoutineTransCtx<'t> {
         self.builder.const_(Literal::I32(c))
     }
 
-    fn load_mem_at_i(&mut self) -> Expr {
+    fn load_mem_at_i(&mut self, offset: u32) -> Expr {
         let i_expr = self.load_i();
-        self.builder.load(1, false, 0, 0, ValueTy::I32, i_expr)
+        self.builder.load(1, false, offset, 0, ValueTy::I32, i_expr)
     }
 
-    fn store_mem_at_i(&mut self, value: Expr) -> Expr {
+    fn store_mem_at_i(&mut self, value: Expr, offset: u32) -> Expr {
         let i_expr = self.load_i();
-        self.builder.store(1, 0, 0, i_expr, value, ValueTy::I32)
+        self.builder.store(1, offset, 0, i_expr, value, ValueTy::I32)
     }
 }
 
