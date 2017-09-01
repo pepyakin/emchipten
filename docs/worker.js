@@ -78,13 +78,7 @@ class Env {
         }
     }
     is_key_pressed(key) {
-        console.log("is_key_pressed(key=" + key + ")");
-        let pressed = Atomics.load(SHEAP8, KEYBOARD_MEM_OFFSET + key);
-        if (pressed != 0) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return Atomics.load(SHEAP8, KEYBOARD_MEM_OFFSET + key);
     }
     store_bcd(value, i) {
         console.log("store_bcd(value=" + value + ", i=" + i + ")");
