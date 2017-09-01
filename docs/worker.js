@@ -1,23 +1,22 @@
+const DISPLAY_WIDTH = 64;
+const DISPLAY_HEIGHT = 32;
+const LASTKEY_FUTEX_MEM_OFFSET = 0;
+const KEYBOARD_MEM_OFFSET = LASTKEY_FUTEX_MEM_OFFSET + 4;
+const DISPLAY_MEM_OFFSET = KEYBOARD_MEM_OFFSET + 16;
+const DT_MEM_OFFSET = DISPLAY_MEM_OFFSET + (DISPLAY_WIDTH * DISPLAY_HEIGHT);
+const ST_MEM_OFFSET = DT_MEM_OFFSET + 1;
+
 function instantiate(bytes, imports) {
     return WebAssembly
         .compile(bytes)
         .then(m => new WebAssembly.Instance(m, imports));
 }
 
-var DISPLAY_WIDTH = 64;
-var DISPLAY_HEIGHT = 32;
-
 var memory;
 var HEAP8;
-var SHEAP8;
+var SHEAP8, SHEAP32;
 
 console.log("instantiating wasm...");
-
-
-const DISPLAY_MEM_OFFSET = 0;
-const DT_MEM_OFFSET = DISPLAY_MEM_OFFSET + (DISPLAY_WIDTH * DISPLAY_HEIGHT);
-const ST_MEM_OFFSET = DT_MEM_OFFSET + 1;
-const KEYBOARD_MEM_OFFSET = ST_MEM_OFFSET + 1;
 
 class Env {
     constructor() {
@@ -50,31 +49,41 @@ class Env {
         return collision;
     }
     get_dt() {
-        return Atomics.load(SHEAP8, DT_MEM_OFFSET);
+        let dt = Atomics.load(SHEAP8, DT_MEM_OFFSET);
+        console.log("get_dt()=" + dt);
+        return dt;
     }
     set_dt(dt) {
+        console.log("set_dt=" + dt);
         Atomics.store(SHEAP8, DT_MEM_OFFSET, dt|0 & 0xFF);
     }
     set_st(st) {
+        console.log("set_st=" + st);
         Atomics.store(SHEAP8, ST_MEM_OFFSET, st|0 & 0xFF);
     }
     wait_key() {
-        throw "unimplemented";
-        return 0;
+        console.log("wait_key()");
+        Atomics.wait(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
+        let lastPressedKey = Atomics.load(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET);
+        Atomics.store(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET, 0xff);
+        // var lastPressedKey = 0xFF;
+        // while (lastPressedKey == 0xff) {
+        //     lastPressedKey = Atomics.load(SHEAP32, LASTKEY_FUTEX_MEM_OFFSET);
+        // }
+        console.log("wait_key()=" + lastPressedKey);
+        return lastPressedKey;
     }
     clear_screen() {
-        var msg = {
-            "type": "render"
-        };
+        console.log("clear_screen");
         for (var x = 0; x < DISPLAY_WIDTH; x++) {
             for (var y = 0; y < DISPLAY_HEIGHT; y++) {
                 let index = y * DISPLAY_WIDTH + x + DISPLAY_MEM_OFFSET;
                 Atomics.store(SHEAP8, index, 0);
             }
         }
-        self.postMessage(msg);
     }
     is_key_pressed(key) {
+        console.log("is_key_pressed(key=" + key + ")");
         let pressed = Atomics.load(SHEAP8, KEYBOARD_MEM_OFFSET + key);
         if (pressed != 0) {
             return 1;
@@ -84,7 +93,9 @@ class Env {
     }
     store_bcd(value, i) {
         console.log("store_bcd(value=" + value + ", i=" + i + ")");
-        throw "unimplemented";
+        HEAP8[i]     = (value / 100)|0 & 0xFF;
+        HEAP8[i + 1] = (value % 100 / 10)|0 & 0xFF;
+        HEAP8[i + 2] = (value % 10)|0 & 0xFF;
     }
 }
 
@@ -98,6 +109,7 @@ onmessage = function(e) {
             console.log("starting " + wasmFilename);
 
             SHEAP8 = new Int8Array(sab);
+            SHEAP32 = new Int32Array(sab);
 
             let env = new Env();
             let imports = {
@@ -111,8 +123,13 @@ onmessage = function(e) {
                     console.log("instance=" + instance);
                     memory = instance.exports.mem;
                     HEAP8 = new Int8Array(memory.buffer);
-                    instance.exports.routine_512();
-                    console.log("routine returned");
+                    try {
+                        instance.exports.routine_512();
+                    } catch (err) {
+                        console.log("err=" + err);
+                    } finally {
+                        console.log("start returned!");
+                    }
             });
             break;
     }
