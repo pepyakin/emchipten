@@ -111,7 +111,10 @@ onmessage = function(e) {
                 env
             };
 
-            fetch(wasmFilename)
+            var params = { 
+                cache: 'no-cache' 
+            };
+            fetch(wasmFilename, params)
                 .then(response => response.arrayBuffer())
                 .then(bytes => instantiate(bytes, imports))
                 .then(instance => {
