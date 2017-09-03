@@ -162,6 +162,7 @@ impl<'t> RoutineTransCtx<'t> {
             match bb.terminator() {
                 Ret => {
                     // Return should be added in trans_bb()
+                    unreachable!();
                 }
                 Jump { target } => {
                     let to_relooper_block = relooper_blocks[&target];
@@ -210,6 +211,7 @@ impl<'t> RoutineTransCtx<'t> {
             self.trans_instruction(inst, &mut stmts);
         }
 
+        // Handle Ret terminator here to make Relooper's life easier...
         if let cfg::Terminator::Ret = bb.terminator() {
             stmts.push(self.builder.ret(None));
         }
