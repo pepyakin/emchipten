@@ -1,0 +1,113 @@
+	start:
+0xa2cc|		LD I, 716
+0x6a07|		LD V10, 7
+0x6100|		LD V1, 0
+	adr_518:
+0x6b08|		LD V11, 8
+0x6000|		LD V0, 0
+	adr_522:
+0xd011|		DRW V0, V1, 17
+0x7008|		ADD V0, 8
+0x7bff|		ADD V11, 255
+0x3b00|		SE V11, 0
+0x120a|		JP 522
+0x7104|		ADD V1, 4
+0x7aff|		ADD V10, 255
+0x3a00|		SE V10, 0
+0x1206|		JP 518
+0x6600|		LD V6, 0
+0x6710|		LD V7, 16
+0xa2cd|		LD I, 717
+0x6020|		LD V0, 32
+0x611e|		LD V1, 30
+0xd011|		DRW V0, V1, 17
+	adr_552:
+0x631d|		LD V3, 29
+0x623f|		LD V2, 63
+0x8202|		AND V2, V0
+0x77ff|		ADD V7, 255
+0x4700|		SNE V7, 0
+0x12aa|		JP 682
+0xff0a|		LD V15, K
+	adr_566:
+0xa2cb|		LD I, 715
+0xd231|		DRW V2, V3, 49
+0x65ff|		LD V5, 255
+0xc401|		RND V4, 1
+0x3401|		SE V4, 1
+0x64ff|		LD V4, 255
+	adr_578:
+0xa2cd|		LD I, 717
+0x6c00|		LD V12, 0
+0x6e04|		LD V14, 4
+0xeea1|		SKNP V14
+0x6cff|		LD V12, 255
+0x6e06|		LD V14, 6
+0xeea1|		SKNP V14
+0x6c01|		LD V12, 1
+0xd011|		DRW V0, V1, 17
+0x80c4|		ADD V0, V12
+0xd011|		DRW V0, V1, 17
+0x4f01|		SNE V15, 1
+0x1298|		JP 664
+0x4200|		SNE V2, 0
+0x6401|		LD V4, 1
+0x423f|		SNE V2, 63
+0x64ff|		LD V4, 255
+0x4300|		SNE V3, 0
+0x6501|		LD V5, 1
+0x431f|		SNE V3, 31
+0x12a4|		JP 676
+0xa2cb|		LD I, 715
+0xd231|		DRW V2, V3, 49
+0x8244|		ADD V2, V4
+0x8354|		ADD V3, V5
+0xd231|		DRW V2, V3, 49
+0x3f01|		SE V15, 1
+0x1242|		JP 578
+0x431e|		SNE V3, 30
+0x1298|		JP 664
+0x6a02|		LD V10, 2
+0xfa18|		LD ST, V10
+0x7601|		ADD V6, 1
+0x4670|		SNE V6, 112
+0x12aa|		JP 682
+0xd231|		DRW V2, V3, 49
+0xc401|		RND V4, 1
+0x3401|		SE V4, 1
+0x64ff|		LD V4, 255
+0xc501|		RND V5, 1
+0x3501|		SE V5, 1
+0x65ff|		LD V5, 255
+0x1242|		JP 578
+	adr_664:
+0x6a03|		LD V10, 3
+0xfa18|		LD ST, V10
+0xa2cb|		LD I, 715
+0xd231|		DRW V2, V3, 49
+0x73ff|		ADD V3, 255
+0x1236|		JP 566
+	adr_676:
+0xa2cb|		LD I, 715
+0xd231|		DRW V2, V3, 49
+0x1228|		JP 552
+	adr_682:
+0xa2cd|		LD I, 717
+0xd011|		DRW V0, V1, 17
+0xa2f0|		LD I, 752
+0xf633|		LD B, V6
+0xf265|		LD V2, [i]
+0x6318|		LD V3, 24
+0x641b|		LD V4, 27
+0xf029|		LD F, V0
+0xd345|		DRW V3, V4, 69
+0x7305|		ADD V3, 5
+0xf129|		LD F, V1
+0xd345|		DRW V3, V4, 69
+0x7305|		ADD V3, 5
+0xf229|		LD F, V2
+0xd345|		DRW V3, V4, 69
+	adr_712:
+0x12c8|		JP 712
+0x180|		GOTO adr:384
+0x44ff|		SNE V4, 255

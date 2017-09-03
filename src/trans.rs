@@ -162,7 +162,6 @@ impl<'t> RoutineTransCtx<'t> {
             match bb.terminator() {
                 Ret => {
                     // Return should be added in trans_bb()
-                    unreachable!();
                 }
                 Jump { target } => {
                     let to_relooper_block = relooper_blocks[&target];

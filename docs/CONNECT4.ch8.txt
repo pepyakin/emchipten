@@ -1,0 +1,105 @@
+	start:
+0x121a|		JP 538
+0x434f|		SNE V3, 79
+0x4e4e|		SNE V14, 78
+0x4543|		SNE V5, 67
+0x5434|		SE V4, V3
+0x2062|		CALL sub_98
+0x7920|		ADD V9, 32
+0x4461|		SNE V4, 97
+0x7669|		ADD V6, 105
+0x6420|		LD V4, 32
+0x5749|		SE V7, V4
+0x4e54|		SNE V14, 84
+0x4552|		SNE V5, 82
+	adr_538:
+0xa2bb|		LD I, 699
+0xf665|		LD V6, [i]
+0xa2b4|		LD I, 692
+0xf655|		LD [I], V6
+0x6900|		LD V9, 0
+0x6801|		LD V8, 1
+0x6b00|		LD V11, 0
+0x6d0f|		LD V13, 15
+0x6e1f|		LD V14, 31
+0xa2a5|		LD I, 677
+0x600d|		LD V0, 13
+0x6132|		LD V1, 50
+0x6200|		LD V2, 0
+	adr_564:
+0xd02f|		DRW V0, V2, 47
+0xd12f|		DRW V1, V2, 47
+0x720f|		ADD V2, 15
+0x321e|		SE V2, 30
+0x1234|		JP 564
+0xd021|		DRW V0, V2, 33
+0xd121|		DRW V1, V2, 33
+0x7201|		ADD V2, 1
+0x600a|		LD V0, 10
+0xa29f|		LD I, 671
+0xd021|		DRW V0, V2, 33
+0xd121|		DRW V1, V2, 33
+0xa29f|		LD I, 671
+0xdde1|		DRW V13, V14, 225
+	adr_592:
+0xfc0a|		LD V12, K
+0xdde1|		DRW V13, V14, 225
+0x4c05|		SNE V12, 5
+0x127e|		JP 638
+0x3c04|		SE V12, 4
+0x126a|		JP 618
+0x7bff|		ADD V11, 255
+0x7dfb|		ADD V13, 251
+0x3d0a|		SE V13, 10
+0x127a|		JP 634
+0x6b06|		LD V11, 6
+0x6d2d|		LD V13, 45
+0x127a|		JP 634
+	adr_618:
+0x3c06|		SE V12, 6
+0x1298|		JP 664
+0x7b01|		ADD V11, 1
+0x7d05|		ADD V13, 5
+0x3d32|		SE V13, 50
+0x127a|		JP 634
+0x6b00|		LD V11, 0
+0x6d0f|		LD V13, 15
+	adr_634:
+0xdde1|		DRW V13, V14, 225
+0x1250|		JP 592
+	adr_638:
+0xa2b4|		LD I, 692
+0xfb1e|		ADD I, V11
+0xf065|		LD V0, [i]
+0x40fc|		SNE V0, 252
+0x1298|		JP 664
+0x8a00|		LD V0, V10
+0x70fb|		ADD V0, 251
+0xf055|		LD [I], V0
+0x8983|		XOR V9, V8
+0xa29e|		LD I, 670
+0x3900|		SE V9, 0
+0xa2a1|		LD I, 673
+0xdda4|		DRW V13, V10, 164
+	adr_664:
+0xa29f|		LD I, 671
+0xdde1|		DRW V13, V14, 225
+0x1250|		JP 592
+0x60f0|		LD V0, 240
+0xf060|		
+0x9090|		SNE V0, V9
+0x6080|		LD V0, 128
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586
+0x1a1a|		JP 2586

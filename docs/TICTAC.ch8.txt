@@ -1,0 +1,264 @@
+	start:
+0x1218|		JP 536
+0x5449|		SE V4, V4
+0x4354|		SNE V3, 84
+0x4143|		SNE V1, 67
+0x2062|		CALL sub_98
+0x7920|		ADD V9, 32
+0x4461|		SNE V4, 97
+0x7669|		ADD V6, 105
+0x6420|		LD V4, 32
+0x5749|		SE V7, V4
+0x4e54|		SNE V14, 84
+0x4552|		SNE V5, 82
+	adr_536:
+0x6b00|		LD V11, 0
+0x6c00|		LD V12, 0
+	adr_540:
+0x80b0|		LD V11, V0
+0x81c0|		LD V12, V1
+0xa3e6|		LD I, 998
+	sub_546:
+0xf155|		LD [I], V1
+0xa3c4|		LD I, 964
+0xff65|		LD V15, [i]
+0xa3b4|		LD I, 948
+0xff55|		LD [I], V15
+0xa3e6|		LD I, 998
+0xf165|		LD V1, [i]
+0x8b00|		LD V0, V11
+0x8c10|		LD V1, V12
+0xe0|		CLS
+0x6e01|		LD V14, 1
+0x6013|		LD V0, 19
+0x6103|		LD V1, 3
+0xa39a|		LD I, 922
+	adr_574:
+0xd011|		DRW V0, V1, 17
+0x7008|		ADD V0, 8
+0x302b|		SE V0, 43
+0x123e|		JP 574
+0x6013|		LD V0, 19
+0x7108|		ADD V1, 8
+0x3123|		SE V1, 35
+0x123e|		JP 574
+0x6013|		LD V0, 19
+0x6103|		LD V1, 3
+0xa39b|		LD I, 923
+	adr_596:
+0xd01f|		DRW V0, V1, 31
+0x7008|		ADD V0, 8
+0x3033|		SE V0, 51
+0x1254|		JP 596
+0x6013|		LD V0, 19
+0x710f|		ADD V1, 15
+	adr_608:
+0xd01a|		DRW V0, V1, 26
+0x7008|		ADD V0, 8
+0x3033|		SE V0, 51
+0x1260|		JP 608
+0x2366|		CALL sub_870
+	adr_618:
+0xf00a|		LD V0, K
+0x8100|		LD V0, V1
+0xa3b4|		LD I, 948
+0xf01e|		ADD I, V0
+0xf065|		LD V0, [i]
+0x4000|		SNE V0, 0
+0x128a|		JP 650
+0x227c|		CALL sub_636
+0x126a|		JP 618
+	sub_636:
+0x6010|		LD V0, 16
+0xf018|		LD ST, V0
+0xf015|		LD DT, V0
+	adr_642:
+0xf007|		LD V0, DT
+0x3000|		SE V0, 0
+0x1282|		JP 642
+0xee|		RET
+	adr_650:
+0x6002|		LD V0, 2
+0x8e03|		XOR V14, V0
+0x80e0|		LD V14, V0
+0xf055|		LD [I], V0
+0xa3d4|		LD I, 980
+0x8010|		LD V1, V0
+0x70ff|		ADD V0, 255
+0x8004|		ADD V0, V0
+0xf01e|		ADD I, V0
+0xf165|		LD V1, [i]
+0xa3aa|		LD I, 938
+0x3e03|		SE V14, 3
+0xa3af|		LD I, 943
+0xd015|		DRW V0, V1, 21
+0x22c8|		CALL sub_712
+0x3a00|		SE V10, 0
+0x121c|		JP 540
+0xa3b4|		LD I, 948
+0x6100|		LD V1, 0
+0x6200|		LD V2, 0
+0x6301|		LD V3, 1
+	adr_692:
+0xf065|		LD V0, [i]
+0x3000|		SE V0, 0
+0x7101|		ADD V1, 1
+0xf31e|		ADD I, V3
+0x7201|		ADD V2, 1
+0x3210|		SE V2, 16
+0x12b4|		JP 692
+0x3110|		SE V1, 16
+0x126a|		JP 618
+0x121c|		JP 540
+	sub_712:
+0x6a00|		LD V10, 0
+0xa3b4|		LD I, 948
+0x6001|		LD V0, 1
+0xf01e|		ADD I, V0
+0xf865|		LD V8, [i]
+0x6900|		LD V9, 0
+0x8904|		ADD V9, V0
+0x2344|		CALL sub_836
+0x8914|		ADD V9, V1
+0x2344|		CALL sub_836
+0x8924|		ADD V9, V2
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8934|		ADD V9, V3
+0x2344|		CALL sub_836
+0x8944|		ADD V9, V4
+0x2344|		CALL sub_836
+0x8954|		ADD V9, V5
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8964|		ADD V9, V6
+0x2344|		CALL sub_836
+0x8974|		ADD V9, V7
+0x2344|		CALL sub_836
+0x8984|		ADD V9, V8
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8964|		ADD V9, V6
+0x2344|		CALL sub_836
+0x8934|		ADD V9, V3
+0x2344|		CALL sub_836
+0x8904|		ADD V9, V0
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8974|		ADD V9, V7
+0x2344|		CALL sub_836
+0x8944|		ADD V9, V4
+0x2344|		CALL sub_836
+0x8914|		ADD V9, V1
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8984|		ADD V9, V8
+0x2344|		CALL sub_836
+0x8954|		ADD V9, V5
+0x2344|		CALL sub_836
+0x8924|		ADD V9, V2
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8984|		ADD V9, V8
+0x2344|		CALL sub_836
+0x8944|		ADD V9, V4
+0x2344|		CALL sub_836
+0x8904|		ADD V9, V0
+0x234a|		CALL sub_842
+0x6900|		LD V9, 0
+0x8964|		ADD V9, V6
+0x2344|		CALL sub_836
+0x8944|		ADD V9, V4
+0x2344|		CALL sub_836
+0x8924|		ADD V9, V2
+0x234a|		CALL sub_842
+0xee|		RET
+	sub_836:
+0x890e|		SHL V9
+0x890e|		SHL V9
+0xee|		RET
+	sub_842:
+0x4915|		SNE V9, 21
+0x1354|		JP 852
+0x493f|		SNE V9, 63
+0x135a|		JP 858
+0xee|		RET
+	adr_852:
+0x2366|		CALL sub_870
+0x7b01|		ADD V11, 1
+0x135e|		JP 862
+	adr_858:
+0x2366|		CALL sub_870
+0x7c01|		ADD V12, 1
+	adr_862:
+0x2366|		CALL sub_870
+0x6a01|		LD V10, 1
+0xf00a|		LD V0, K
+0xee|		RET
+	sub_870:
+0x6305|		LD V3, 5
+0x640a|		LD V4, 10
+0xa3af|		LD I, 943
+0xd345|		DRW V3, V4, 69
+0x6302|		LD V3, 2
+0x7406|		ADD V4, 6
+0xa3e6|		LD I, 998
+0xfb33|		LD B, V11
+0x2388|		CALL sub_904
+0x6332|		LD V3, 50
+0x640a|		LD V4, 10
+0xa3aa|		LD I, 938
+0xd345|		DRW V3, V4, 69
+0x632f|		LD V3, 47
+0x7406|		ADD V4, 6
+0xa3e6|		LD I, 998
+0xfc33|		LD B, V12
+	sub_904:
+0xf265|		LD V2, [i]
+0xf029|		LD F, V0
+0x2394|		CALL sub_916
+0xf129|		LD F, V1
+0x2394|		CALL sub_916
+0xf229|		LD F, V2
+	sub_916:
+0xd345|		DRW V3, V4, 69
+0x7305|		ADD V3, 5
+0xee|		RET
+0x7f80|		ADD V15, 128
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x1c22|		JP 3106
+0x2222|		CALL sub_546
+0x1c22|		JP 3106
+0x1408|		JP 1032
+0x1422|		JP 1058
+0x100|		GOTO adr:256
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x101|		GOTO adr:257
+0x101|		GOTO adr:257
+0x101|		GOTO adr:257
+0x100|		GOTO adr:256
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0
+0x101|		GOTO adr:257
+0x101|		GOTO adr:257
+0x101|		GOTO adr:257
+0x1305|		JP 773
+0x1b05|		JP 2821
+0x2305|		CALL sub_773
+0x130d|		JP 781
+0x1b0d|		JP 2829
+0x230d|		CALL sub_781
+0x1315|		JP 789
+0x1b15|		JP 2837
+0x2315|		CALL sub_789

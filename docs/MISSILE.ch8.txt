@@ -1,0 +1,91 @@
+	start:
+0x1219|		JP 537
+0x4d49|		SNE V13, 73
+0x5353|		SE V3, V5
+0x494c|		SNE V9, 76
+0x4520|		SNE V5, 32
+0x6279|		LD V2, 121
+0x2044|		CALL sub_68
+0x6176|		LD V1, 118
+0x6964|		LD V9, 100
+0x2057|		CALL sub_87
+0x494e|		SNE V9, 78
+0x5445|		SE V4, V4
+0x526c|		SE V2, V6
+0xc60|		GOTO adr:3168
+0x61|		GOTO adr:97
+0x65|		GOTO adr:101
+0x866|		GOTO adr:2150
+0xa67|		GOTO adr:2663
+0x6e|		GOTO adr:110
+0x1a2|		GOTO adr:418
+0xadd0|		LD I, 3536
+0x1470|		JP 1136
+0x830|		GOTO adr:2096
+0x4012|		SNE V0, 18
+0x2960|		CALL sub_2400
+0x61|		GOTO adr:97
+0x1ca2|		JP 3234
+0xb0d0|		JP V0, 208
+0x14a2|		JP 1186
+0xb0d0|		JP V0, 208
+0x143e|		JP 1086
+0x112|		GOTO adr:274
+0x4970|		SNE V9, 112
+0x440|		GOTO adr:1088
+0x386e|		SE V8, 110
+0x12|		GOTO adr:18
+0x4f70|		SNE V15, 112
+0xfc40|		
+0x6e|		GOTO adr:110
+0x1d0|		GOTO adr:464
+0x14fc|		JP 1276
+0x15fb|		JP 1531
+0x73b|		GOTO adr:1851
+0x12|		GOTO adr:18
+0x5362|		SE V3, V6
+0x8e2|		GOTO adr:2274
+0x9e12|		SNE V14, V1
+0x953c|		SNE V5, V3
+0x7c|		GOTO adr:124
+0xfe63|		
+0x1b82|		JP 2946
+0xa2|		GOTO adr:162
+0xb0d2|		JP V0, 210
+0x3164|		SE V1, 100
+0xd2|		GOTO adr:210
+0x3173|		SE V1, 115
+0xffd2|		
+0x313f|		SE V1, 63
+0x64|		GOTO adr:100
+0x133|		GOTO adr:307
+0x312|		GOTO adr:786
+0x6dd2|		LD V13, 210
+0x3134|		SE V1, 52
+0x112|		GOTO adr:274
+0x9177|		SNE V1, V7
+0x575|		GOTO adr:1397
+0xff82|		
+0x63|		GOTO adr:99
+0xa2|		GOTO adr:162
+0xadd2|		LD I, 3538
+0x3445|		SE V4, 69
+0x12|		GOTO adr:18
+0x9776|		SNE V7, V7
+0xff36|		
+0x12|		GOTO adr:18
+0x39a2|		SE V9, 162
+0xb4f7|		JP V0, 1271
+0x33f2|		SE V3, 242
+0x6563|		LD V5, 99
+0x1b64|		JP 2916
+0xdf1|		GOTO adr:3569
+0x29d3|		CALL sub_2515
+0x4573|		SNE V5, 115
+0x5f2|		GOTO adr:1522
+0x29d3|		CALL sub_2515
+0x4512|		SNE V5, 18
+0xab10|		LD I, 2832
+0x3838|		SE V8, 56
+0x1038|		JP 56
+0x7cfe|		ADD V12, 254

@@ -1,0 +1,19 @@
+	start:
+0xa21e|		LD I, 542
+0xc201|		RND V2, 1
+0x3201|		SE V2, 1
+0xa21a|		LD I, 538
+0xd014|		DRW V0, V1, 20
+0x7004|		ADD V0, 4
+0x3040|		SE V0, 64
+0x1200|		JP 512
+0x6000|		LD V0, 0
+0x7104|		ADD V1, 4
+0x3120|		SE V1, 32
+0x1200|		JP 512
+	adr_536:
+0x1218|		JP 536
+0x8040|		LD V4, V0
+0x2010|		CALL sub_16
+0x2040|		CALL sub_64
+0x8010|		LD V1, V0

@@ -1,0 +1,125 @@
+	start:
+0xa2cd|		LD I, 717
+0x6938|		LD V9, 56
+0x6a08|		LD V10, 8
+0xd9a3|		DRW V9, V10, 163
+0xa2d0|		LD I, 720
+0x6b00|		LD V11, 0
+0x6c03|		LD V12, 3
+0xdbc3|		DRW V11, V12, 195
+0xa2d6|		LD I, 726
+0x641d|		LD V4, 29
+0x651f|		LD V5, 31
+0xd451|		DRW V4, V5, 81
+0x6700|		LD V7, 0
+0x680f|		LD V8, 15
+0x22a2|		CALL sub_674
+	adr_542:
+0x22ac|		CALL sub_684
+0x4800|		SNE V8, 0
+	adr_546:
+0x1222|		JP 546
+0x641e|		LD V4, 30
+0x651c|		LD V5, 28
+0xa2d3|		LD I, 723
+0xd453|		DRW V4, V5, 83
+0x6e00|		LD V14, 0
+	adr_558:
+0x6680|		LD V6, 128
+0x6d04|		LD V13, 4
+0xeda1|		SKNP V13
+0x66ff|		LD V6, 255
+0x6d05|		LD V13, 5
+0xeda1|		SKNP V13
+0x6600|		LD V6, 0
+0x6d06|		LD V13, 6
+0xeda1|		SKNP V13
+0x6601|		LD V6, 1
+0x3680|		SE V6, 128
+0x22d8|		CALL sub_728
+	adr_582:
+0xa2d0|		LD I, 720
+0xdbc3|		DRW V11, V12, 195
+0xcd01|		RND V13, 1
+0x8bd4|		ADD V11, V13
+0xdbc3|		DRW V11, V12, 195
+0x3f00|		SE V15, 0
+0x1292|		JP 658
+0xa2cd|		LD I, 717
+0xd9a3|		DRW V9, V10, 163
+0xcd01|		RND V13, 1
+0x3d00|		SE V13, 0
+0x6dff|		LD V13, 255
+0x79fe|		ADD V9, 254
+0xd9a3|		DRW V9, V10, 163
+0x3f00|		SE V15, 0
+0x128c|		JP 652
+0x4e00|		SNE V14, 0
+0x122e|		JP 558
+0xa2d3|		LD I, 723
+0xd453|		DRW V4, V5, 83
+0x4500|		SNE V5, 0
+0x1286|		JP 646
+0x75ff|		ADD V5, 255
+0x8464|		ADD V4, V6
+0xd453|		DRW V4, V5, 83
+0x3f01|		SE V15, 1
+0x1246|		JP 582
+0x6d08|		LD V13, 8
+0x8d52|		AND V13, V5
+0x4d08|		SNE V13, 8
+0x128c|		JP 652
+0x1292|		JP 658
+	adr_646:
+0x22ac|		CALL sub_684
+0x78ff|		ADD V8, 255
+0x121e|		JP 542
+	adr_652:
+0x22a2|		CALL sub_674
+0x7705|		ADD V7, 5
+0x1296|		JP 662
+	adr_658:
+0x22a2|		CALL sub_674
+0x770f|		ADD V7, 15
+	adr_662:
+0x22a2|		CALL sub_674
+0x6d03|		LD V13, 3
+0xfd18|		LD ST, V13
+0xa2d3|		LD I, 723
+0xd453|		DRW V4, V5, 83
+0x1286|		JP 646
+	sub_674:
+0xa2f8|		LD I, 760
+0xf733|		LD B, V7
+0x6300|		LD V3, 0
+0x22b6|		CALL sub_694
+0xee|		RET
+	sub_684:
+0xa2f8|		LD I, 760
+0xf833|		LD B, V8
+0x6332|		LD V3, 50
+0x22b6|		CALL sub_694
+0xee|		RET
+	sub_694:
+0x6d1b|		LD V13, 27
+0xf265|		LD V2, [i]
+0xf029|		LD F, V0
+0xd3d5|		DRW V3, V13, 213
+0x7305|		ADD V3, 5
+0xf129|		LD F, V1
+0xd3d5|		DRW V3, V13, 213
+0x7305|		ADD V3, 5
+0xf229|		LD F, V2
+0xd3d5|		DRW V3, V13, 213
+0xee|		RET
+0x17c|		GOTO adr:380
+0xfe7c|		
+0x60f0|		LD V0, 240
+0x6040|		LD V0, 64
+0xe0a0|		
+0xf8d4|		
+	sub_728:
+0x6e01|		LD V14, 1
+0x6d10|		LD V13, 16
+0xfd18|		LD ST, V13
+0xee|		RET

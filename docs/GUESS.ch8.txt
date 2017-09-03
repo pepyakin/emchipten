@@ -1,0 +1,81 @@
+	start:
+0x6e01|		LD V14, 1
+	adr_514:
+0xe0|		CLS
+0x6d01|		LD V13, 1
+0x6a01|		LD V10, 1
+0x6b01|		LD V11, 1
+	adr_522:
+0x8cd0|		LD V13, V12
+0x8ce2|		AND V12, V14
+0x4c00|		SNE V12, 0
+0x1220|		JP 544
+0x88d0|		LD V13, V8
+0x223e|		CALL sub_574
+0x3a40|		SE V10, 64
+0x1220|		JP 544
+0x6a01|		LD V10, 1
+0x7b06|		ADD V11, 6
+0x3c3f|		SE V12, 63
+	adr_544:
+0x7d01|		ADD V13, 1
+0x3d3f|		SE V13, 63
+0x120a|		JP 522
+0xf00a|		LD V0, K
+0x4005|		SNE V0, 5
+0x89e4|		ADD V9, V14
+0x8ee4|		ADD V14, V14
+0x3e40|		SE V14, 64
+0x1202|		JP 514
+0x6a1c|		LD V10, 28
+0x6b0d|		LD V11, 13
+0x8890|		LD V9, V8
+0xe0|		CLS
+0x223e|		CALL sub_574
+	adr_572:
+0x123c|		JP 572
+	sub_574:
+0xa294|		LD I, 660
+0xf833|		LD B, V8
+0xf265|		LD V2, [i]
+0x2254|		CALL sub_596
+0xdab5|		DRW V10, V11, 181
+0x7a04|		ADD V10, 4
+0x8120|		LD V2, V1
+0x2254|		CALL sub_596
+0xdab5|		DRW V10, V11, 181
+0x7a05|		ADD V10, 5
+0xee|		RET
+	sub_596:
+0x8310|		LD V1, V3
+0x8334|		ADD V3, V3
+0x8334|		ADD V3, V3
+0x8314|		ADD V3, V1
+0xa262|		LD I, 610
+0xf31e|		ADD I, V3
+0xee|		RET
+0xe0a0|		
+0xa0a0|		LD I, 160
+0xe040|		
+0x4040|		SNE V0, 64
+0x4040|		SNE V0, 64
+0xe020|		
+0xe080|		
+0xe0e0|		
+0x20e0|		CALL sub_224
+0x20e0|		CALL sub_224
+0xa0a0|		LD I, 160
+0xe020|		
+0x20e0|		CALL sub_224
+0x80e0|		LD V14, V0
+0x20e0|		CALL sub_224
+0xe080|		
+0xe0a0|		
+0xe0e0|		
+0x2020|		CALL sub_32
+0x2020|		CALL sub_32
+0xe0a0|		
+0xe0a0|		
+0xe0e0|		
+0xa0e0|		LD I, 224
+0x20e0|		CALL sub_224

@@ -1,0 +1,136 @@
+	start:
+0x6a02|		LD V10, 2
+0x6b0c|		LD V11, 12
+0x6c3f|		LD V12, 63
+0x6d0c|		LD V13, 12
+0xa2ea|		LD I, 746
+0xdab6|		DRW V10, V11, 182
+0xdcd6|		DRW V12, V13, 214
+0x6e00|		LD V14, 0
+0x22d4|		CALL sub_724
+0x6603|		LD V6, 3
+0x6802|		LD V8, 2
+	adr_534:
+0x6060|		LD V0, 96
+0xf015|		LD DT, V0
+	adr_538:
+0xf007|		LD V0, DT
+0x3000|		SE V0, 0
+0x121a|		JP 538
+0xc717|		RND V7, 23
+0x7708|		ADD V7, 8
+0x69ff|		LD V9, 255
+0xa2f0|		LD I, 752
+0xd671|		DRW V6, V7, 113
+	adr_554:
+0xa2ea|		LD I, 746
+0xdab6|		DRW V10, V11, 182
+0xdcd6|		DRW V12, V13, 214
+0x6001|		LD V0, 1
+0xe0a1|		SKNP V0
+0x7bfe|		ADD V11, 254
+0x6004|		LD V0, 4
+0xe0a1|		SKNP V0
+0x7b02|		ADD V11, 2
+0x601f|		LD V0, 31
+0x8b02|		AND V11, V0
+0xdab6|		DRW V10, V11, 182
+0x600c|		LD V0, 12
+0xe0a1|		SKNP V0
+0x7dfe|		ADD V13, 254
+0x600d|		LD V0, 13
+0xe0a1|		SKNP V0
+0x7d02|		ADD V13, 2
+0x601f|		LD V0, 31
+0x8d02|		AND V13, V0
+0xdcd6|		DRW V12, V13, 214
+0xa2f0|		LD I, 752
+0xd671|		DRW V6, V7, 113
+0x8684|		ADD V6, V8
+0x8794|		ADD V7, V9
+0x603f|		LD V0, 63
+0x8602|		AND V6, V0
+0x611f|		LD V1, 31
+0x8712|		AND V7, V1
+0x4602|		SNE V6, 2
+0x1278|		JP 632
+0x463f|		SNE V6, 63
+0x1282|		JP 642
+	adr_620:
+0x471f|		SNE V7, 31
+0x69ff|		LD V9, 255
+0x4700|		SNE V7, 0
+0x6901|		LD V9, 1
+0xd671|		DRW V6, V7, 113
+0x122a|		JP 554
+	adr_632:
+0x6802|		LD V8, 2
+0x6301|		LD V3, 1
+0x8070|		LD V7, V0
+0x80b5|		SUB V0, V11
+0x128a|		JP 650
+	adr_642:
+0x68fe|		LD V8, 254
+0x630a|		LD V3, 10
+0x8070|		LD V7, V0
+0x80d5|		SUB V0, V13
+	adr_650:
+0x3f01|		SE V15, 1
+0x12a2|		JP 674
+0x6102|		LD V1, 2
+0x8015|		SUB V0, V1
+0x3f01|		SE V15, 1
+0x12ba|		JP 698
+0x8015|		SUB V0, V1
+0x3f01|		SE V15, 1
+0x12c8|		JP 712
+0x8015|		SUB V0, V1
+0x3f01|		SE V15, 1
+0x12c2|		JP 706
+	adr_674:
+0x6020|		LD V0, 32
+0xf018|		LD ST, V0
+0x22d4|		CALL sub_724
+0x8e34|		ADD V14, V3
+0x22d4|		CALL sub_724
+0x663e|		LD V6, 62
+0x3301|		SE V3, 1
+0x6603|		LD V6, 3
+0x68fe|		LD V8, 254
+0x3301|		SE V3, 1
+0x6802|		LD V8, 2
+0x1216|		JP 534
+	adr_698:
+0x79ff|		ADD V9, 255
+0x49fe|		SNE V9, 254
+0x69ff|		LD V9, 255
+0x12c8|		JP 712
+	adr_706:
+0x7901|		ADD V9, 1
+0x4902|		SNE V9, 2
+0x6901|		LD V9, 1
+	adr_712:
+0x6004|		LD V0, 4
+0xf018|		LD ST, V0
+0x7601|		ADD V6, 1
+0x4640|		SNE V6, 64
+0x76fe|		ADD V6, 254
+0x126c|		JP 620
+	sub_724:
+0xa2f2|		LD I, 754
+0xfe33|		LD B, V14
+0xf265|		LD V2, [i]
+0xf129|		LD F, V1
+0x6414|		LD V4, 20
+0x6500|		LD V5, 0
+0xd455|		DRW V4, V5, 85
+0x7415|		ADD V4, 21
+0xf229|		LD F, V2
+0xd455|		DRW V4, V5, 85
+0xee|		RET
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8080|		LD V8, V0
+0x8000|		LD V0, V0
+0x0|		GOTO adr:0
+0x0|		GOTO adr:0

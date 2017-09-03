@@ -1,0 +1,206 @@
+	start:
+0xe0|		CLS
+0x6c00|		LD V12, 0
+0x4c00|		SNE V12, 0
+0x6e0f|		LD V14, 15
+0xa203|		LD I, 515
+0x6020|		LD V0, 32
+0xf055|		LD [I], V0
+0xe0|		CLS
+	adr_528:
+0x22be|		CALL sub_702
+0x2276|		CALL sub_630
+0x228e|		CALL sub_654
+0x225e|		CALL sub_606
+0x2246|		CALL sub_582
+0x1210|		JP 528
+	sub_540:
+0x6100|		LD V1, 0
+0x6217|		LD V2, 23
+0x6304|		LD V3, 4
+	adr_546:
+0x4110|		SNE V1, 16
+0xee|		RET
+0xa2e8|		LD I, 744
+0xf11e|		ADD I, V1
+0xf065|		LD V0, [i]
+0x4000|		SNE V0, 0
+0x1234|		JP 564
+0xf029|		LD F, V0
+0xd235|		DRW V2, V3, 53
+	adr_564:
+0x7101|		ADD V1, 1
+0x7205|		ADD V2, 5
+0x6403|		LD V4, 3
+0x8412|		AND V4, V1
+0x3400|		SE V4, 0
+0x1222|		JP 546
+0x6217|		LD V2, 23
+0x7306|		ADD V3, 6
+0x1222|		JP 546
+	adr_582:
+0x6403|		LD V4, 3
+0x84e2|		AND V4, V14
+0x6503|		LD V5, 3
+0x85d2|		AND V5, V13
+0x9450|		SNE V4, V5
+0xee|		RET
+0x4403|		SNE V4, 3
+0xee|		RET
+0x6401|		LD V4, 1
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x1246|		JP 582
+	adr_606:
+0x6403|		LD V4, 3
+0x84e2|		AND V4, V14
+0x6503|		LD V5, 3
+0x85d2|		AND V5, V13
+0x9450|		SNE V4, V5
+0xee|		RET
+0x4400|		SNE V4, 0
+0xee|		RET
+0x64ff|		LD V4, 255
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x125e|		JP 606
+	adr_630:
+0x640c|		LD V4, 12
+0x84e2|		AND V4, V14
+0x650c|		LD V5, 12
+0x85d2|		AND V5, V13
+0x9450|		SNE V4, V5
+0xee|		RET
+0x4400|		SNE V4, 0
+0xee|		RET
+0x64fc|		LD V4, 252
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x1276|		JP 630
+	adr_654:
+0x640c|		LD V4, 12
+0x84e2|		AND V4, V14
+0x650c|		LD V5, 12
+0x85d2|		AND V5, V13
+0x9450|		SNE V4, V5
+0xee|		RET
+0x440c|		SNE V4, 12
+0xee|		RET
+0x6404|		LD V4, 4
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x128e|		JP 654
+	sub_678:
+0xa2e8|		LD I, 744
+0xf41e|		ADD I, V4
+0xf065|		LD V0, [i]
+0xa2e8|		LD I, 744
+0xfe1e|		ADD I, V14
+0xf055|		LD [I], V0
+0x6000|		LD V0, 0
+0xa2e8|		LD I, 744
+0xf41e|		ADD I, V4
+0xf055|		LD [I], V0
+0x8e40|		LD V4, V14
+0xee|		RET
+	sub_702:
+0x3c00|		SE V12, 0
+0x12d2|		JP 722
+0x221c|		CALL sub_540
+0x22d8|		CALL sub_728
+0x221c|		CALL sub_540
+0xa2f8|		LD I, 760
+0xfd1e|		ADD I, V13
+0xf065|		LD V0, [i]
+0x8d00|		LD V0, V13
+0xee|		RET
+	adr_722:
+0x7cff|		ADD V12, 255
+0xcd0f|		RND V13, 15
+0xee|		RET
+	adr_728:
+0x7d01|		ADD V13, 1
+0x600f|		LD V0, 15
+0x8d02|		AND V13, V0
+0xed9e|		SKP V13
+0x12d8|		JP 728
+	adr_738:
+0xeda1|		SKNP V13
+0x12e2|		JP 738
+0xee|		RET
+0x102|		GOTO adr:258
+0x304|		GOTO adr:772
+0x506|		GOTO adr:1286
+0x708|		GOTO adr:1800
+0x90a|		GOTO adr:2314
+0xb0c|		GOTO adr:2828
+0xd0e|		GOTO adr:3342
+0xf00|		GOTO adr:3840
+0xd00|		GOTO adr:3328
+0x102|		GOTO adr:258
+0x405|		GOTO adr:1029
+0x608|		GOTO adr:1544
+0x90a|		GOTO adr:2314
+0xc0e|		GOTO adr:3086
+0x307|		GOTO adr:775
+0xb0f|		GOTO adr:2831
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x1276|		JP 630
+0x640c|		LD V4, 12
+0x84e2|		AND V4, V14
+0x650c|		LD V5, 12
+0x85d2|		AND V5, V13
+0x9450|		SNE V4, V5
+0xee|		RET
+0x440c|		SNE V4, 12
+0xee|		RET
+0x6404|		LD V4, 4
+0x84e4|		ADD V4, V14
+0x22a6|		CALL sub_678
+0x128e|		JP 654
+0xa2e8|		LD I, 744
+0xf41e|		ADD I, V4
+0xf065|		LD V0, [i]
+0xa2e8|		LD I, 744
+0xfe1e|		ADD I, V14
+0xf055|		LD [I], V0
+0x6000|		LD V0, 0
+0xa2e8|		LD I, 744
+0xf41e|		ADD I, V4
+0xf055|		LD [I], V0
+0x8e40|		LD V4, V14
+0xee|		RET
+0x3c00|		SE V12, 0
+0x12d2|		JP 722
+0x221c|		CALL sub_540
+0x22d8|		CALL sub_728
+0x221c|		CALL sub_540
+0xa2f8|		LD I, 760
+0xfd1e|		ADD I, V13
+0xf065|		LD V0, [i]
+0x8d00|		LD V0, V13
+0xee|		RET
+0x7cff|		ADD V12, 255
+0xcd0f|		RND V13, 15
+0xee|		RET
+0x7d01|		ADD V13, 1
+0x600f|		LD V0, 15
+0x8d02|		AND V13, V0
+0xed9e|		SKP V13
+0x12d8|		JP 728
+0xeda1|		SKNP V13
+0x12e2|		JP 738
+0xee|		RET
+0x102|		GOTO adr:258
+0x304|		GOTO adr:772
+0x506|		GOTO adr:1286
+0x708|		GOTO adr:1800
+0x90a|		GOTO adr:2314
+0xb0c|		GOTO adr:2828
+0xd0e|		GOTO adr:3342
+0xf00|		GOTO adr:3840
+0xd00|		GOTO adr:3328
+0x102|		GOTO adr:258
+0x405|		GOTO adr:1029
+0x608|		GOTO adr:1544
