@@ -820,7 +820,7 @@
                                      (br $label$177)
                                     )
                                     (block $label$180
-                                     (br $label$46)
+                                     (br $label$47)
                                     )
                                    )
                                   )
@@ -845,7 +845,7 @@
                                       (br $label$182)
                                      )
                                      (block $label$185
-                                      (br $label$47)
+                                      (br $label$46)
                                      )
                                     )
                                    )
@@ -885,10 +885,10 @@
                  )
                  (block $label$193
                   (block $label$194
-                   (set_global $global$4
+                   (set_global $global$8
                     (i32.and
                      (i32.add
-                      (get_global $global$4)
+                      (get_global $global$8)
                       (i32.const 1)
                      )
                      (i32.const 255)
@@ -911,10 +911,10 @@
                 )
                 (block $label$200
                  (block $label$201
-                  (set_global $global$8
+                  (set_global $global$4
                    (i32.and
                     (i32.add
-                     (get_global $global$8)
+                     (get_global $global$4)
                      (i32.const 1)
                     )
                     (i32.const 255)

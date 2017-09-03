@@ -40,81 +40,6 @@
  (data (i32.const 512) "j\02k\0cl?m\0c\a2\ea\da\b6\dc\d6n\00\"\d4f\03h\02``\f0\15\f0\070\00\12\1a\c7\17w\08i\ff\a2\f0\d6q\a2\ea\da\b6\dc\d6`\01\e0\a1{\fe`\04\e0\a1{\02`\1f\8b\02\da\b6`\0c\e0\a1}\fe`\0d\e0\a1}\02`\1f\8d\02\dc\d6\a2\f0\d6q\86\84\87\94`?\86\02a\1f\87\12F\02\12xF?\12\82G\1fi\ffG\00i\01\d6q\12*h\02c\01\80p\80\b5\12\8ah\fec\n\80p\80\d5?\01\12\a2a\02\80\15?\01\12\ba\80\15?\01\12\c8\80\15?\01\12\c2` \f0\18\"\d4\8e4\"\d4f>3\01f\03h\fe3\01h\02\12\16y\ffI\fei\ff\12\c8y\01I\02i\01`\04\f0\18v\01F@v\fe\12l\a2\f2\fe3\f2e\f1)d\14e\00\d4Ut\15\f2)\d4U\00\ee\80\80\80\80\80\80\80\00\00\00\00\00")
  (export "mem" (memory $0))
  (export "routine_512" (func $routine_512))
- (func $routine_724 (type $0)
-  (local $var$0 i32)
-  (local $var$1 i32)
-  (block $label$0
-   (block $label$1
-    (set_global $global$0
-     (i32.const 754)
-    )
-    (call $import$7
-     (get_global $global$15)
-     (get_global $global$0)
-    )
-    (set_global $global$1
-     (i32.load8_u
-      (get_global $global$0)
-     )
-    )
-    (set_global $global$2
-     (i32.load8_u offset=1
-      (get_global $global$0)
-     )
-    )
-    (set_global $global$3
-     (i32.load8_u offset=2
-      (get_global $global$0)
-     )
-    )
-    (set_global $global$0
-     (i32.mul
-      (get_global $global$2)
-      (i32.const 5)
-     )
-    )
-    (set_global $global$5
-     (i32.const 20)
-    )
-    (set_global $global$6
-     (i32.const 0)
-    )
-    (set_global $global$16
-     (call $import$2
-      (get_global $global$5)
-      (get_global $global$6)
-      (get_global $global$0)
-      (i32.const 5)
-     )
-    )
-    (set_global $global$5
-     (i32.and
-      (i32.add
-       (get_global $global$5)
-       (i32.const 21)
-      )
-      (i32.const 255)
-     )
-    )
-    (set_global $global$0
-     (i32.mul
-      (get_global $global$3)
-      (i32.const 5)
-     )
-    )
-    (set_global $global$16
-     (call $import$2
-      (get_global $global$5)
-      (get_global $global$6)
-      (get_global $global$0)
-      (i32.const 5)
-     )
-    )
-    (return)
-   )
-   (unreachable)
-  )
- )
  (func $routine_512 (type $0)
   (local $var$0 i32)
   (local $var$1 i32)
@@ -1097,6 +1022,81 @@
      )
     )
    )
+  )
+ )
+ (func $routine_724 (type $0)
+  (local $var$0 i32)
+  (local $var$1 i32)
+  (block $label$0
+   (block $label$1
+    (set_global $global$0
+     (i32.const 754)
+    )
+    (call $import$7
+     (get_global $global$15)
+     (get_global $global$0)
+    )
+    (set_global $global$1
+     (i32.load8_u
+      (get_global $global$0)
+     )
+    )
+    (set_global $global$2
+     (i32.load8_u offset=1
+      (get_global $global$0)
+     )
+    )
+    (set_global $global$3
+     (i32.load8_u offset=2
+      (get_global $global$0)
+     )
+    )
+    (set_global $global$0
+     (i32.mul
+      (get_global $global$2)
+      (i32.const 5)
+     )
+    )
+    (set_global $global$5
+     (i32.const 20)
+    )
+    (set_global $global$6
+     (i32.const 0)
+    )
+    (set_global $global$16
+     (call $import$2
+      (get_global $global$5)
+      (get_global $global$6)
+      (get_global $global$0)
+      (i32.const 5)
+     )
+    )
+    (set_global $global$5
+     (i32.and
+      (i32.add
+       (get_global $global$5)
+       (i32.const 21)
+      )
+      (i32.const 255)
+     )
+    )
+    (set_global $global$0
+     (i32.mul
+      (get_global $global$3)
+      (i32.const 5)
+     )
+    )
+    (set_global $global$16
+     (call $import$2
+      (get_global $global$5)
+      (get_global $global$6)
+      (get_global $global$0)
+      (i32.const 5)
+     )
+    )
+    (return)
+   )
+   (unreachable)
   )
  )
 )

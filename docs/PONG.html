@@ -5,17 +5,43 @@
 </head>
 
 <body>
-    <a href="/">Index</a>
+    <a href="./">Index</a><br/>
 
-    <canvas></canvas>
-    <a href="PONG.ch8.txt">ROM Disassembly</a><br/>
-    <a href="PONG.wast.txt">WebAssembly Disassembly</a><br/>
     <script src="main.js">
     </script>
     <script>
+        var browserHasAllFeatures = true;
+        if (!window.Worker) {
+            document.write("Your browser doesn't support WebWorkers!<br/>");
+            browserHasAllFeatures = false;
+        }
+
+        if (!window.WebAssembly) {
+            document.write("Your browser doesn't support WebAssembly!<br/>");
+            browserHasAllFeatures = false;
+        }
+
+        if (!window.SharedArrayBuffer) {
+            document.write("Your browser doesn't support SharedArrayBuffer!<br/>");
+            browserHasAllFeatures = false;
+        }
+
+        if (!window.Atomics) {
+            document.write("Your browser doesn't support Atomics!<br/>");
+            browserHasAllFeatures = false;
+        }
+
         romName = "PONG.wasm";
-        start(romName);
+
+        if (browserHasAllFeatures) {
+            document.write("<canvas></canvas>");
+            start(romName);
+        } else {
+            document.write("You can't run this demo!<br/>");
+        }
     </script>
+    <a href="PONG.ch8.txt">ROM Disassembly</a><br/>
+    <a href="PONG.wast.txt">WebAssembly Disassembly</a><br/>
 </body>
 
 </html>
