@@ -2,6 +2,7 @@
 
 import os
 import os.path
+from string import Template
 
 roms = os.path.join('.', "roms")
 docs_dir = os.path.join('.', "docs")
@@ -40,14 +41,24 @@ index = '''
 <body>
 '''
 
+
+with open("player_template.html") as player_template_file:
+    player_template = Template(player_template_file.read())
+
 for rom_name in ROMS:
     rom_path = os.path.join(roms, rom_name)
+    player_filename = rom_name + '.html'
     compiled_wasm = rom_name + ".wasm"
     wasm_out = os.path.join(docs_dir, compiled_wasm)
     
     os.system("cargo run -- -o %s %s" % (wasm_out, rom_path))
 
-    index += '<a href="launch.html#%s">%s</a><br/>\n' % (compiled_wasm, rom_name)
+    index += '<a href="%s">%s</a><br/>\n' % (player_filename, rom_name)
+
+    player_html = player_template.substitute(rom_name=compiled_wasm)
+    with open('docs/' + player_filename, 'w') as player_html_file:
+        player_html_file.write(player_html)
+
 
 index += '''
 </body>
