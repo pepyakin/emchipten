@@ -33,8 +33,6 @@ pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) {
         procedure_fn_ty,
     };
 
-    ctx.builder.auto_drop();
-
     {
         let font_segment = Segment::new(&FONT_SPRITES, ctx.builder.const_(Literal::I32(0)));
 
@@ -290,13 +288,11 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::SetST(vx) => {
                 let load_expr = self.load_reg(vx);
                 let set_st_expr = self.trans_call_import("set_st", &[load_expr], Ty::none());
-                // TODO: Drop?
                 stmts.push(set_st_expr);
             }
             Instruction::SetDT(vx) => {
                 let load_expr = self.load_reg(vx);
                 let set_dt_expr = self.trans_call_import("set_dt", &[load_expr], Ty::none());
-                // TODO: Drop?
                 stmts.push(set_dt_expr);
             }
             Instruction::WaitKey(vx) => {
