@@ -12,9 +12,20 @@ from string import Template
 roms = os.path.join('.', "roms")
 docs_dir = os.path.join('.', "docs")
 
-chip8_disassembler_bin = os.environ.get('CHIP8_DISASSEMBLER')
-if chip8_disassembler_bin == None:
-    print("Specify path to CHIP-8 dissassembler with CHIP8_DISASSEMBLER env variable")
+if not os.path.isdir('Chip8-Disassembler'):
+    print(
+"""Chip8-Disassembler directory is not found.
+Try updating submodules with command:
+git submodule update --init""")
+    exit()
+
+chip8_disassembler_bin = 'Chip8-Disassembler/Chip8-Disassembler'
+
+if not os.path.isfile(chip8_disassembler_bin):
+    print(
+"""Chip8-Disassembler executable is not found.
+Try to build it with:
+cd Chip8-Disassembler; make""")
     exit()
 
 ROMS = [
