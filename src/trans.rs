@@ -37,7 +37,10 @@ pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) {
 
     {
         let font_segment = Segment::new(&FONT_SPRITES, ctx.builder.const_(Literal::I32(0)));
-        let rom_segment = Segment::new(rom, ctx.builder.const_(Literal::I32(512)));
+
+        // We need to put ROM data at 0x200 (entry address) because some roms
+        // might actually read this data.
+        let rom_segment = Segment::new(rom, ctx.builder.const_(Literal::I32(0x200)));
 
         let segments = &[font_segment, rom_segment];
         ctx.builder.set_memory(1, 1, Some(&"mem".into()), segments);
