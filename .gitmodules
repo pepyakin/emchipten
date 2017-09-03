@@ -1,3 +1,6 @@
 [submodule "Chip8-Disassembler"]
 	path = Chip8-Disassembler
 	url = https://github.com/bloody76/Chip8-Disassembler
+[submodule "binaryen"]
+	path = binaryen
+	url = https://github.com/WebAssembly/binaryen/

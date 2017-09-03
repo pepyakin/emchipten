@@ -1,0 +1,1088 @@
+(module
+ (type $0 (func))
+ (type $1 (func))
+ (type $2 (func (result i32)))
+ (type $3 (func (param i32 i32 i32 i32) (result i32)))
+ (type $4 (func (result i32)))
+ (type $5 (func (param i32)))
+ (type $6 (func (param i32)))
+ (type $7 (func (result i32)))
+ (type $8 (func (param i32 i32)))
+ (type $9 (func (param i32) (result i32)))
+ (import "env" "clear_screen" (func $import$0))
+ (import "env" "random" (func $import$1 (result i32)))
+ (import "env" "draw" (func $import$2 (param i32 i32 i32 i32) (result i32)))
+ (import "env" "get_dt" (func $import$3 (result i32)))
+ (import "env" "set_dt" (func $import$4 (param i32)))
+ (import "env" "set_st" (func $import$5 (param i32)))
+ (import "env" "wait_key" (func $import$6 (result i32)))
+ (import "env" "store_bcd" (func $import$7 (param i32 i32)))
+ (import "env" "is_key_pressed" (func $import$8 (param i32) (result i32)))
+ (global $global$0 (mut i32) (i32.const 0))
+ (global $global$1 (mut i32) (i32.const 0))
+ (global $global$2 (mut i32) (i32.const 0))
+ (global $global$3 (mut i32) (i32.const 0))
+ (global $global$4 (mut i32) (i32.const 0))
+ (global $global$5 (mut i32) (i32.const 0))
+ (global $global$6 (mut i32) (i32.const 0))
+ (global $global$7 (mut i32) (i32.const 0))
+ (global $global$8 (mut i32) (i32.const 0))
+ (global $global$9 (mut i32) (i32.const 0))
+ (global $global$10 (mut i32) (i32.const 0))
+ (global $global$11 (mut i32) (i32.const 0))
+ (global $global$12 (mut i32) (i32.const 0))
+ (global $global$13 (mut i32) (i32.const 0))
+ (global $global$14 (mut i32) (i32.const 0))
+ (global $global$15 (mut i32) (i32.const 0))
+ (global $global$16 (mut i32) (i32.const 0))
+ (memory $0 1 1)
+ (data (i32.const 0) "\f0\90\90\90\f0 `  p\f0\10\f0\80\f0\f0\10\f0\10\f0\90\90\f0\10\10\f0\80\f0\10\f0\f0\80\f0\90\f0\f0\10 @@\f0\90\f0\90\f0\f0\90\f0\10\f0\f0\90\f0\90\90\e0\90\e0\90\e0\f0\80\80\80\f0\e0\90\90\90\e0\f0\80\f0\80\f0\f0\80\f0\80\80")
+ (data (i32.const 512) "\12\17BLITZ By David WINTER\a3A`\04a\tb\0eg\04\d0\1e\f2\1ep\0c0@\12!\f0\n\00\e0\"\d9\f0\n\00\e0\8ep\a3\1ek\1f\cc\1f\8c\c4\dc\b2?\01\12I\dc\b2\129\ca\07z\01{\fe\dc\b2z\ff:\00\12M~\ff>\00\129k\00\8cpm\00n\00\a3\1b\dd\e3?\00\12\c1;\00\12\81`\05\e0\9e\12\87k\01\88\d0x\02\89\e0y\03\a3\1e\d8\91\81\f0`\05\f0\15\f0\070\00\12\8b;\01\12\ab\a3\1e1\01\d8\91y\019 \12\abk\001\00|\ffL\00\12\bb\a3\1b\dd\e3}\02=@\12\b9m\00~\01\12e\00\e0w\02\12-\a3\1b\dd\e3`\14a\02b\0b\a3 \d0\1b\f2\1ep\080,\12\cd\12\d7`\na\0db\05\a3\07\d0\15\f2\1ep\080*\12\e1\80pp\fe\80\06\a3\87\f03\f2e`-\f1)a\0d\d0\15p\05\f2)\d0\15\00\ee\83\82\83\82\fb\e8\08\88\05\e2\be\a0\b8 >\80\80\80\80\f8\80\f8\fc\c0\c0\f9\81\db\cb\fb\00\fa\8a\9a\99\f8\ef*\e8))\00oh.L\8f\be\a0\b8\b0\be\00\be\">4\b2\d8\d8\00\c3\c3\00\d8\d8\00\c3\c3\00\d8\d8\c0\c0\00\c0\c0\00\c0\c0\00\c0\c0\00\db\db\db\db\00\18\18\00\18\18\00\18\18\00\db\db\db\db\00\18\18\00\18\18\00\18\18\00\18\18\db\db\00\03\03\00\18\18\00\c0\c0\00\db\db")
+ (export "mem" (memory $0))
+ (export "routine_512" (func $routine_512))
+ (func $routine_512 (type $0)
+  (local $var$0 i32)
+  (local $var$1 i32)
+  (block $label$0
+   (block $label$1
+    (block $label$2
+    )
+    (block $label$3
+     (br $label$1)
+    )
+   )
+   (block $label$4
+    (block $label$5
+     (block $label$6
+      (set_global $global$0
+       (i32.const 833)
+      )
+      (set_global $global$1
+       (i32.const 4)
+      )
+      (set_global $global$2
+       (i32.const 9)
+      )
+      (set_global $global$3
+       (i32.const 14)
+      )
+      (set_global $global$8
+       (i32.const 4)
+      )
+     )
+     (block $label$7
+      (br $label$5)
+     )
+    )
+    (block $label$8
+     (block $label$9
+      (loop $label$10
+       (block $label$11
+        (block $label$12
+         (set_global $global$16
+          (call $import$2
+           (get_global $global$1)
+           (get_global $global$2)
+           (get_global $global$0)
+           (i32.const 14)
+          )
+         )
+         (set_global $global$0
+          (i32.and
+           (i32.add
+            (get_global $global$3)
+            (get_global $global$0)
+           )
+           (i32.const 65535)
+          )
+         )
+         (set_global $global$1
+          (i32.and
+           (i32.add
+            (get_global $global$1)
+            (i32.const 12)
+           )
+           (i32.const 255)
+          )
+         )
+        )
+        (if
+         (i32.eq
+          (get_global $global$1)
+          (i32.const 64)
+         )
+         (block $label$13
+          (br $label$9)
+         )
+         (block $label$14
+          (br $label$11)
+         )
+        )
+       )
+       (block $label$15
+        (block $label$16
+        )
+        (block $label$17
+         (br $label$10)
+        )
+       )
+      )
+     )
+     (block $label$18
+      (block $label$19
+       (block $label$20
+        (set_global $global$1
+         (call $import$6)
+        )
+       )
+       (block $label$21
+        (br $label$19)
+       )
+      )
+      (block $label$22
+       (block $label$23
+        (loop $label$24
+         (block $label$25
+          (block $label$26
+           (call $import$0)
+           (call $routine_729)
+           (set_global $global$1
+            (call $import$6)
+           )
+           (call $import$0)
+           (set_global $global$15
+            (get_global $global$8)
+           )
+           (set_global $global$0
+            (i32.const 798)
+           )
+          )
+          (block $label$27
+           (br $label$25)
+          )
+         )
+         (block $label$28
+          (block $label$29
+           (loop $label$30
+            (block $label$31
+             (block $label$32
+              (set_global $global$12
+               (i32.const 31)
+              )
+              (set_global $global$13
+               (i32.and
+                (call $import$1)
+                (i32.const 31)
+               )
+              )
+              (set_global $global$13
+               (i32.and
+                (tee_local $var$0
+                 (i32.add
+                  (get_global $global$13)
+                  (get_global $global$13)
+                 )
+                )
+                (i32.const 255)
+               )
+              )
+              (set_global $global$16
+               (i32.ne
+                (get_local $var$0)
+                (get_global $global$13)
+               )
+              )
+              (set_global $global$16
+               (call $import$2
+                (get_global $global$13)
+                (get_global $global$12)
+                (get_global $global$0)
+                (i32.const 2)
+               )
+              )
+             )
+             (if
+              (i32.eq
+               (get_global $global$16)
+               (i32.const 1)
+              )
+              (block $label$33
+               (block $label$34
+                (block $label$35
+                 (set_global $global$16
+                  (call $import$2
+                   (get_global $global$13)
+                   (get_global $global$12)
+                   (get_global $global$0)
+                   (i32.const 2)
+                  )
+                 )
+                )
+                (block $label$36
+                 (br $label$30)
+                )
+               )
+              )
+              (block $label$37
+               (br $label$31)
+              )
+             )
+            )
+            (block $label$38
+             (block $label$39
+              (block $label$40
+              )
+              (block $label$41
+               (br $label$39)
+              )
+             )
+             (block $label$42
+              (block $label$43
+               (block $label$44
+                (set_global $global$11
+                 (i32.and
+                  (call $import$1)
+                  (i32.const 7)
+                 )
+                )
+                (set_global $global$11
+                 (i32.and
+                  (i32.add
+                   (get_global $global$11)
+                   (i32.const 1)
+                  )
+                  (i32.const 255)
+                 )
+                )
+               )
+               (block $label$45
+                (br $label$43)
+               )
+              )
+              (block $label$46
+               (block $label$47
+                (loop $label$48
+                 (block $label$49
+                  (block $label$50
+                   (set_global $global$12
+                    (i32.and
+                     (i32.add
+                      (get_global $global$12)
+                      (i32.const 254)
+                     )
+                     (i32.const 255)
+                    )
+                   )
+                   (set_global $global$16
+                    (call $import$2
+                     (get_global $global$13)
+                     (get_global $global$12)
+                     (get_global $global$0)
+                     (i32.const 2)
+                    )
+                   )
+                   (set_global $global$11
+                    (i32.and
+                     (i32.add
+                      (get_global $global$11)
+                      (i32.const 255)
+                     )
+                     (i32.const 255)
+                    )
+                   )
+                  )
+                  (if
+                   (i32.eq
+                    (get_global $global$11)
+                    (i32.const 0)
+                   )
+                   (block $label$51
+                    (br $label$47)
+                   )
+                   (block $label$52
+                    (br $label$49)
+                   )
+                  )
+                 )
+                 (block $label$53
+                  (block $label$54
+                  )
+                  (block $label$55
+                   (br $label$48)
+                  )
+                 )
+                )
+               )
+               (block $label$56
+                (block $label$57
+                 (block $label$58
+                  (set_global $global$15
+                   (i32.and
+                    (i32.add
+                     (get_global $global$15)
+                     (i32.const 255)
+                    )
+                    (i32.const 255)
+                   )
+                  )
+                 )
+                 (if
+                  (i32.eq
+                   (get_global $global$15)
+                   (i32.const 0)
+                  )
+                  (block $label$59
+                   (br $label$29)
+                  )
+                  (block $label$60
+                   (br $label$57)
+                  )
+                 )
+                )
+                (block $label$61
+                 (block $label$62
+                 )
+                 (block $label$63
+                  (br $label$30)
+                 )
+                )
+               )
+              )
+             )
+            )
+           )
+          )
+          (block $label$64
+           (block $label$65
+            (block $label$66
+             (set_global $global$12
+              (i32.const 0)
+             )
+             (set_global $global$13
+              (get_global $global$8)
+             )
+             (set_global $global$14
+              (i32.const 0)
+             )
+             (set_global $global$15
+              (i32.const 0)
+             )
+            )
+            (block $label$67
+             (br $label$65)
+            )
+           )
+           (block $label$68
+            (block $label$69
+             (loop $label$70
+              (block $label$71
+               (block $label$72
+                (set_global $global$0
+                 (i32.const 795)
+                )
+                (set_global $global$16
+                 (call $import$2
+                  (get_global $global$14)
+                  (get_global $global$15)
+                  (get_global $global$0)
+                  (i32.const 3)
+                 )
+                )
+               )
+               (if
+                (i32.eq
+                 (get_global $global$16)
+                 (i32.const 0)
+                )
+                (block $label$73
+                 (br $label$71)
+                )
+                (block $label$74
+                 (br $label$23)
+                )
+               )
+              )
+              (block $label$75
+               (block $label$76
+                (block $label$77
+                 (block $label$78
+                 )
+                 (if
+                  (i32.eq
+                   (get_global $global$12)
+                   (i32.const 0)
+                  )
+                  (block $label$79
+                   (block $label$80
+                    (block $label$81
+                     (set_global $global$1
+                      (i32.const 5)
+                     )
+                    )
+                    (if
+                     (i32.eq
+                      (call $import$8
+                       (get_global $global$1)
+                      )
+                      (i32.const 1)
+                     )
+                     (block $label$82
+                      (block $label$83
+                       (block $label$84
+                        (set_global $global$12
+                         (i32.const 1)
+                        )
+                        (set_global $global$9
+                         (get_global $global$14)
+                        )
+                        (set_global $global$9
+                         (i32.and
+                          (i32.add
+                           (get_global $global$9)
+                           (i32.const 2)
+                          )
+                          (i32.const 255)
+                         )
+                        )
+                        (set_global $global$10
+                         (get_global $global$15)
+                        )
+                        (set_global $global$10
+                         (i32.and
+                          (i32.add
+                           (get_global $global$10)
+                           (i32.const 3)
+                          )
+                          (i32.const 255)
+                         )
+                        )
+                       )
+                       (block $label$85
+                        (br $label$77)
+                       )
+                      )
+                     )
+                     (block $label$86
+                      (block $label$87
+                       (block $label$88
+                       )
+                       (block $label$89
+                        (br $label$76)
+                       )
+                      )
+                     )
+                    )
+                   )
+                  )
+                  (block $label$90
+                   (block $label$91
+                    (block $label$92
+                    )
+                    (block $label$93
+                     (br $label$77)
+                    )
+                   )
+                  )
+                 )
+                )
+                (block $label$94
+                 (block $label$95
+                  (set_global $global$0
+                   (i32.const 798)
+                  )
+                  (set_global $global$16
+                   (call $import$2
+                    (get_global $global$9)
+                    (get_global $global$10)
+                    (get_global $global$0)
+                    (i32.const 1)
+                   )
+                  )
+                  (set_global $global$2
+                   (get_global $global$16)
+                  )
+                 )
+                 (block $label$96
+                  (br $label$76)
+                 )
+                )
+               )
+               (block $label$97
+                (block $label$98
+                 (block $label$99
+                  (set_global $global$1
+                   (i32.const 5)
+                  )
+                  (call $import$4
+                   (get_global $global$1)
+                  )
+                 )
+                 (block $label$100
+                  (br $label$98)
+                 )
+                )
+                (block $label$101
+                 (block $label$102
+                  (loop $label$103
+                   (block $label$104
+                    (block $label$105
+                     (set_global $global$1
+                      (call $import$3)
+                     )
+                    )
+                    (if
+                     (i32.eq
+                      (get_global $global$1)
+                      (i32.const 0)
+                     )
+                     (block $label$106
+                      (br $label$102)
+                     )
+                     (block $label$107
+                      (br $label$104)
+                     )
+                    )
+                   )
+                   (block $label$108
+                    (block $label$109
+                    )
+                    (block $label$110
+                     (br $label$103)
+                    )
+                   )
+                  )
+                 )
+                 (block $label$111
+                  (block $label$112
+                   (block $label$113
+                   )
+                   (if
+                    (i32.eq
+                     (get_global $global$12)
+                     (i32.const 1)
+                    )
+                    (block $label$114
+                     (block $label$115
+                      (block $label$116
+                       (block $label$117
+                        (set_global $global$0
+                         (i32.const 798)
+                        )
+                       )
+                       (if
+                        (i32.eq
+                         (get_global $global$2)
+                         (i32.const 1)
+                        )
+                        (block $label$118
+                         (br $label$116)
+                        )
+                        (block $label$119
+                         (block $label$120
+                          (block $label$121
+                           (set_global $global$16
+                            (call $import$2
+                             (get_global $global$9)
+                             (get_global $global$10)
+                             (get_global $global$0)
+                             (i32.const 1)
+                            )
+                           )
+                          )
+                          (block $label$122
+                           (br $label$116)
+                          )
+                         )
+                        )
+                       )
+                      )
+                      (block $label$123
+                       (block $label$124
+                        (block $label$125
+                         (set_global $global$10
+                          (i32.and
+                           (i32.add
+                            (get_global $global$10)
+                            (i32.const 1)
+                           )
+                           (i32.const 255)
+                          )
+                         )
+                        )
+                        (if
+                         (i32.eq
+                          (get_global $global$10)
+                          (i32.const 32)
+                         )
+                         (block $label$126
+                          (br $label$124)
+                         )
+                         (block $label$127
+                          (block $label$128
+                           (block $label$129
+                           )
+                           (block $label$130
+                            (br $label$112)
+                           )
+                          )
+                         )
+                        )
+                       )
+                       (block $label$131
+                        (block $label$132
+                         (block $label$133
+                          (set_global $global$12
+                           (i32.const 0)
+                          )
+                         )
+                         (if
+                          (i32.eq
+                           (get_global $global$2)
+                           (i32.const 0)
+                          )
+                          (block $label$134
+                           (br $label$132)
+                          )
+                          (block $label$135
+                           (block $label$136
+                            (block $label$137
+                             (set_global $global$13
+                              (i32.and
+                               (i32.add
+                                (get_global $global$13)
+                                (i32.const 255)
+                               )
+                               (i32.const 255)
+                              )
+                             )
+                            )
+                            (block $label$138
+                             (br $label$132)
+                            )
+                           )
+                          )
+                         )
+                        )
+                        (block $label$139
+                         (block $label$140
+                         )
+                         (if
+                          (i32.ne
+                           (get_global $global$13)
+                           (i32.const 0)
+                          )
+                          (block $label$141
+                           (br $label$112)
+                          )
+                          (block $label$142
+                           (br $label$69)
+                          )
+                         )
+                        )
+                       )
+                      )
+                     )
+                    )
+                    (block $label$143
+                     (block $label$144
+                      (block $label$145
+                      )
+                      (block $label$146
+                       (br $label$112)
+                      )
+                     )
+                    )
+                   )
+                  )
+                  (block $label$147
+                   (block $label$148
+                    (block $label$149
+                     (set_global $global$0
+                      (i32.const 795)
+                     )
+                     (set_global $global$16
+                      (call $import$2
+                       (get_global $global$14)
+                       (get_global $global$15)
+                       (get_global $global$0)
+                       (i32.const 3)
+                      )
+                     )
+                     (set_global $global$14
+                      (i32.and
+                       (i32.add
+                        (get_global $global$14)
+                        (i32.const 2)
+                       )
+                       (i32.const 255)
+                      )
+                     )
+                    )
+                    (if
+                     (i32.eq
+                      (get_global $global$14)
+                      (i32.const 64)
+                     )
+                     (block $label$150
+                      (block $label$151
+                       (block $label$152
+                        (set_global $global$14
+                         (i32.const 0)
+                        )
+                        (set_global $global$15
+                         (i32.and
+                          (i32.add
+                           (get_global $global$15)
+                           (i32.const 1)
+                          )
+                          (i32.const 255)
+                         )
+                        )
+                       )
+                       (block $label$153
+                        (br $label$148)
+                       )
+                      )
+                     )
+                     (block $label$154
+                      (block $label$155
+                       (block $label$156
+                       )
+                       (block $label$157
+                        (br $label$148)
+                       )
+                      )
+                     )
+                    )
+                   )
+                   (block $label$158
+                    (block $label$159
+                    )
+                    (block $label$160
+                     (br $label$70)
+                    )
+                   )
+                  )
+                 )
+                )
+               )
+              )
+             )
+            )
+            (block $label$161
+             (block $label$162
+              (block $label$163
+              )
+              (block $label$164
+               (br $label$162)
+              )
+             )
+             (block $label$165
+              (block $label$166
+               (call $import$0)
+               (set_global $global$8
+                (i32.and
+                 (i32.add
+                  (get_global $global$8)
+                  (i32.const 2)
+                 )
+                 (i32.const 255)
+                )
+               )
+              )
+              (block $label$167
+               (br $label$24)
+              )
+             )
+            )
+           )
+          )
+         )
+        )
+       )
+       (block $label$168
+        (block $label$169
+         (block $label$170
+         )
+         (block $label$171
+          (br $label$169)
+         )
+        )
+        (block $label$172
+         (block $label$173
+          (block $label$174
+           (set_global $global$0
+            (i32.const 795)
+           )
+           (set_global $global$16
+            (call $import$2
+             (get_global $global$14)
+             (get_global $global$15)
+             (get_global $global$0)
+             (i32.const 3)
+            )
+           )
+           (set_global $global$1
+            (i32.const 20)
+           )
+           (set_global $global$2
+            (i32.const 2)
+           )
+           (set_global $global$3
+            (i32.const 11)
+           )
+           (set_global $global$0
+            (i32.const 800)
+           )
+          )
+          (block $label$175
+           (br $label$173)
+          )
+         )
+         (block $label$176
+          (block $label$177
+           (loop $label$178
+            (block $label$179
+             (block $label$180
+              (set_global $global$16
+               (call $import$2
+                (get_global $global$1)
+                (get_global $global$2)
+                (get_global $global$0)
+                (i32.const 11)
+               )
+              )
+              (set_global $global$0
+               (i32.and
+                (i32.add
+                 (get_global $global$3)
+                 (get_global $global$0)
+                )
+                (i32.const 65535)
+               )
+              )
+              (set_global $global$1
+               (i32.and
+                (i32.add
+                 (get_global $global$1)
+                 (i32.const 8)
+                )
+                (i32.const 255)
+               )
+              )
+             )
+             (if
+              (i32.eq
+               (get_global $global$1)
+               (i32.const 44)
+              )
+              (block $label$181
+               (br $label$177)
+              )
+              (block $label$182
+               (br $label$179)
+              )
+             )
+            )
+            (block $label$183
+             (block $label$184
+             )
+             (block $label$185
+              (br $label$178)
+             )
+            )
+           )
+          )
+          (loop $label$186
+           (block $label$187
+           )
+           (block $label$188
+            (br $label$186)
+           )
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   )
+  )
+ )
+ (func $routine_729 (type $0)
+  (local $var$0 i32)
+  (local $var$1 i32)
+  (block $label$0
+   (block $label$1
+    (block $label$2
+     (set_global $global$1
+      (i32.const 10)
+     )
+     (set_global $global$2
+      (i32.const 13)
+     )
+     (set_global $global$3
+      (i32.const 5)
+     )
+     (set_global $global$0
+      (i32.const 775)
+     )
+    )
+    (block $label$3
+     (br $label$1)
+    )
+   )
+   (block $label$4
+    (block $label$5
+     (loop $label$6
+      (block $label$7
+       (block $label$8
+        (set_global $global$16
+         (call $import$2
+          (get_global $global$1)
+          (get_global $global$2)
+          (get_global $global$0)
+          (i32.const 5)
+         )
+        )
+        (set_global $global$0
+         (i32.and
+          (i32.add
+           (get_global $global$3)
+           (get_global $global$0)
+          )
+          (i32.const 65535)
+         )
+        )
+        (set_global $global$1
+         (i32.and
+          (i32.add
+           (get_global $global$1)
+           (i32.const 8)
+          )
+          (i32.const 255)
+         )
+        )
+       )
+       (if
+        (i32.eq
+         (get_global $global$1)
+         (i32.const 42)
+        )
+        (block $label$9
+         (br $label$5)
+        )
+        (block $label$10
+         (br $label$7)
+        )
+       )
+      )
+      (block $label$11
+       (block $label$12
+       )
+       (block $label$13
+        (br $label$6)
+       )
+      )
+     )
+    )
+    (block $label$14
+     (block $label$15
+      (set_global $global$1
+       (get_global $global$8)
+      )
+      (set_global $global$1
+       (i32.and
+        (i32.add
+         (get_global $global$1)
+         (i32.const 254)
+        )
+        (i32.const 255)
+       )
+      )
+      (set_global $global$1
+       (i32.shr_u
+        (get_global $global$1)
+        (i32.const 1)
+       )
+      )
+      (set_global $global$16
+       (i32.and
+        (get_global $global$1)
+        (i32.const 1)
+       )
+      )
+      (set_global $global$0
+       (i32.const 903)
+      )
+      (call $import$7
+       (get_global $global$1)
+       (get_global $global$0)
+      )
+      (set_global $global$1
+       (i32.load8_u
+        (get_global $global$0)
+       )
+      )
+      (set_global $global$2
+       (i32.load8_u offset=1
+        (get_global $global$0)
+       )
+      )
+      (set_global $global$3
+       (i32.load8_u offset=2
+        (get_global $global$0)
+       )
+      )
+      (set_global $global$1
+       (i32.const 45)
+      )
+      (set_global $global$0
+       (i32.mul
+        (get_global $global$2)
+        (i32.const 5)
+       )
+      )
+      (set_global $global$2
+       (i32.const 13)
+      )
+      (set_global $global$16
+       (call $import$2
+        (get_global $global$1)
+        (get_global $global$2)
+        (get_global $global$0)
+        (i32.const 5)
+       )
+      )
+      (set_global $global$1
+       (i32.and
+        (i32.add
+         (get_global $global$1)
+         (i32.const 5)
+        )
+        (i32.const 255)
+       )
+      )
+      (set_global $global$0
+       (i32.mul
+        (get_global $global$3)
+        (i32.const 5)
+       )
+      )
+      (set_global $global$16
+       (call $import$2
+        (get_global $global$1)
+        (get_global $global$2)
+        (get_global $global$0)
+        (i32.const 5)
+       )
+      )
+      (return)
+     )
+     (unreachable)
+    )
+   )
+  )
+ )
+)
+
