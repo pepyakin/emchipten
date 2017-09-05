@@ -2,16 +2,15 @@
 
 extern crate binaryen;
 extern crate byteorder;
+extern crate docopt;
 #[macro_use]
 extern crate enum_primitive;
 #[macro_use]
 extern crate error_chain;
-extern crate docopt;
 #[macro_use]
 extern crate serde_derive;
 
 use docopt::Docopt;
-use std::io;
 use std::fs::File;
 
 mod instruction;
@@ -53,11 +52,10 @@ fn run() -> Result<()> {
 
     let opts = Opts {
         optimize: args.flag_optimize,
-        print: args.flag_print,
-        ..Default::default()
+        print: args.flag_print
     };
     let rom_buffer = read_rom(&args.arg_rom_file)?;
-    let wasm = build_rom(&rom_buffer, opts)?;
+    let wasm = build_rom(&rom_buffer, &opts)?;
     if let Some(out_file) = args.flag_o {
         dump(&wasm, &out_file)?;
     }
@@ -80,9 +78,9 @@ fn dump(buf: &[u8], filename: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn build_rom(rom: &[u8], opts: Opts) -> Result<Vec<u8>> {
-    let cfg = cfg::build_cfg(&rom)?;
-    trans::trans_rom(&rom, &cfg, opts)
+pub fn build_rom(rom: &[u8], opts: &Opts) -> Result<Vec<u8>> {
+    let cfg = cfg::build_cfg(rom)?;
+    trans::trans_rom(rom, &cfg, opts)
 }
 
 #[cfg(test)]

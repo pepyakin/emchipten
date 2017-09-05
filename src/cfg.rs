@@ -247,10 +247,8 @@ pub fn build_cfg(rom: &[u8]) -> Result<CFG> {
         let mut sub_builder = SubroutineBuilder::new(Rom::new(rom), Pc::from(subroutine_addr));
         let mut seen_calls_from_sr = HashSet::new();
         sub_builder.build_cfg(&mut seen_calls_from_sr)?;
-        if RoutineId(subroutine_addr) == RoutineId::start() {
-            if sub_builder.has_ret {
-                bail!("ret in top-level code found")
-            }
+        if RoutineId(subroutine_addr) == RoutineId::start() && sub_builder.has_ret {
+            bail!("ret in top-level code found")
         }
         subs.insert(subroutine_addr.into(), sub_builder);
 

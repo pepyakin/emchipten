@@ -21,7 +21,7 @@ impl Default for Opts {
     }
 }
 
-pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) -> Result<Vec<u8>> {
+pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: &Opts) -> Result<Vec<u8>> {
     let mut builder = Module::new();
 
     let procedure_fn_ty = builder.add_fn_type(None, &[], Ty::none());
