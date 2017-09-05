@@ -179,6 +179,9 @@ impl<'a> SubroutineBuilder<'a> {
                         self.has_ret = true;
                         break;
                     }
+                    Instruction::JumpPlusV0(_) => {
+                        bail!("Indirect jumps not supported!");
+                    }
                     Instruction::Jump(addr) => {
                         let target_pc = Pc::from(addr);
                         leaders.entry(target_pc).or_insert_with(|| {
