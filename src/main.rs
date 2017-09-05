@@ -2,25 +2,26 @@
 
 extern crate binaryen;
 extern crate byteorder;
-extern crate docopt;
 #[macro_use]
 extern crate enum_primitive;
 #[macro_use]
 extern crate error_chain;
+extern crate docopt;
 #[macro_use]
 extern crate serde_derive;
+
+use docopt::Docopt;
+use std::io;
+use std::fs::File;
 
 mod instruction;
 mod error;
 mod cfg;
 mod trans;
+pub mod ffi;
 
 pub use error::*;
-
-use std::fs::File;
-use std::path::Path;
-
-use docopt::Docopt;
+pub use trans::*;
 
 const USAGE: &'static str = "
 emchipten - compile CHIP-8 into WebAssembly.
@@ -43,43 +44,55 @@ struct Args {
     flag_print: bool,
 }
 
-fn read_rom<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
-    use std::io::Read;
+quick_main!(run);
 
-    let mut rom_file = File::open(path)?;
+fn run() -> Result<()> {
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.deserialize())
+        .unwrap_or_else(|e| e.exit());
+
+    let opts = Opts {
+        optimize: args.flag_optimize,
+        print: args.flag_print,
+        ..Default::default()
+    };
+    let rom_buffer = read_rom(&args.arg_rom_file)?;
+    let wasm = build_rom(&rom_buffer, opts)?;
+    if let Some(out_file) = args.flag_o {
+        dump(&wasm, &out_file)?;
+    }
+    Ok(())
+}
+
+fn read_rom(filename: &str) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let mut rom_file = File::open(filename)?;
     let mut rom_buffer = Vec::new();
     rom_file.read_to_end(&mut rom_buffer)?;
     Ok(rom_buffer)
 }
 
-fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.deserialize())
-        .unwrap_or_else(|e| e.exit());
-
-    let opts = trans::Opts {
-        optimize: args.flag_optimize,
-        print: args.flag_print,
-        out_file: args.flag_o.as_ref().map(|s| s.as_ref()),
-        ..Default::default()
-    };
-    println!("{:?}", opts);
-    build_rom(&args.arg_rom_file, opts);
+fn dump(buf: &[u8], filename: &str) -> Result<()> {
+    use std::fs::File;
+    use std::io::Write;
+    let mut file = File::create(filename)?;
+    file.write_all(buf)?;
+    Ok(())
 }
 
-pub fn build_rom(filename: &str, opts: trans::Opts) {
-    let rom_buffer = read_rom(filename).unwrap();
-    println!("{:?}", rom_buffer);
-    let cfg = cfg::build_cfg(&rom_buffer).unwrap();
-    println!("{:#?}", cfg);
-    cfg.print();
-
-    trans::trans_rom(&rom_buffer, &cfg, opts);
+pub fn build_rom(rom: &[u8], opts: Opts) -> Result<Vec<u8>> {
+    let cfg = cfg::build_cfg(&rom)?;
+    trans::trans_rom(&rom, &cfg, opts)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_rom, trans};
+    use super::build_rom;
+    use error::*;
+    use {cfg, trans};
+    use std::fs::File;
+    use std::path::Path;
+
     const TEST_ROMS: &[&'static str] = &[
         "15PUZZLE",
         "BLINKY",
@@ -109,15 +122,20 @@ mod tests {
         // "ZERO", unexpected EOF
     ];
 
+    fn read_and_build_rom(filename: &str) -> Result<Vec<u8>> {
+        use std::io::Read;
+        let mut rom_file = File::open(filename)?;
+        let mut rom_buffer = Vec::new();
+        rom_file.read_to_end(&mut rom_buffer)?;
+        build_rom(&rom_buffer, trans::Opts::default())
+    }
+
     #[test]
     fn compile_roms() {
         for rom in TEST_ROMS {
             let rom_filename = format!("roms/{}", rom);
             println!("building {}:", rom);
-            let opts = trans::Opts {
-                ..Default::default()
-            };
-            build_rom(&rom_filename, opts);
+            read_and_build_rom(&rom_filename);
         }
     }
 }

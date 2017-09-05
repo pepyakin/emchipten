@@ -34,8 +34,7 @@ impl<'a> Rom<'a> {
         use byteorder::{BigEndian, ByteOrder};
 
         if pc.0 >= self.bytes.len() {
-            // TODO: handle this
-            panic!("unimplemented");
+            bail!("Unexpected EOF");
         }
 
         let Pc(actual_pc) = pc;

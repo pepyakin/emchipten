@@ -2,27 +2,26 @@
 use instruction::*;
 use binaryen::*;
 use cfg;
+use error::*;
 
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct Opts<'a> {
-    pub out_file: Option<&'a str>,
+pub struct Opts {
     pub optimize: bool,
     pub print: bool,
 }
 
-impl<'a> Default for Opts<'a> {
-    fn default() -> Opts<'a> {
+impl Default for Opts {
+    fn default() -> Opts {
         Opts {
-            out_file: None,
             optimize: true,
-            print: false
+            print: false,
         }
     }
 }
 
-pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) {
+pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) -> Result<Vec<u8>> {
     let mut builder = Module::new();
 
     let procedure_fn_ty = builder.add_fn_type(None, &[], Ty::none());
@@ -99,17 +98,7 @@ pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: Opts) {
         ctx.builder.print();
     }
 
-    if let Some(out_file) = opts.out_file {
-        let buf = ctx.builder.write();
-        dump(&buf, out_file);
-    }
-}
-
-fn dump(buf: &[u8], filename: &str) {
-    use std::fs::File;
-    use std::io::Write;
-    let mut file = File::create(filename).unwrap();
-    file.write_all(buf).unwrap();
+    Ok(ctx.builder.write())
 }
 
 struct TransCtx<'a> {
@@ -318,8 +307,7 @@ impl<'t> RoutineTransCtx<'t> {
                 // (vx * 5)
                 let vx_expr = self.load_reg(vx);
                 let imm_expr = self.load_imm(0x05);
-                let result_expr = self.builder
-                    .binary(BinaryOp::MulI32, vx_expr, imm_expr);
+                let result_expr = self.builder.binary(BinaryOp::MulI32, vx_expr, imm_expr);
                 let store_i_expr = self.store_i(result_expr);
                 stmts.push(store_i_expr);
             }
@@ -507,7 +495,8 @@ impl<'t> RoutineTransCtx<'t> {
 
     fn store_mem_at_i(&mut self, value: Expr, offset: u32) -> Expr {
         let i_expr = self.load_i();
-        self.builder.store(1, offset, 0, i_expr, value, ValueTy::I32)
+        self.builder
+            .store(1, offset, 0, i_expr, value, ValueTy::I32)
     }
 }
 
