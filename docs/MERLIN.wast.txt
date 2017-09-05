@@ -40,6 +40,60 @@
  (data (i32.const 512) "\12\19 MERLIN By David WINTER\"\f9\a3\1d`\10a\00\"\cb\a31`\0ba\1b\"\cbd\04\"\dfe\00b(\"\c1\c2\03\80 \a3Y\f5\1e\f0U`\17a\08c\01\83\"3\00p\nc\02\83\"3\00q\n\a3\17\d0\16b\14\"\c1\d0\16b\05\"\c1u\01TP\125e\00`\17a\08\a3\17\f3\n3\04\12yc\00\12\973\05\12\83p\nc\01\12\973\07\12\8dq\nc\02\12\973\08\12ip\nq\nc\03\d0\16b\14\"\c1\d0\16\a3Y\f5\1e\f0eu\01P0\12\b5U@\12i\"\dft\01\12-\"\f9\a3E`\10a\0e\"\cb\12\bf\f2\15\f2\072\00\12\c3\00\ee\83\00b\05\d0\15\f2\1ep\08\850u PP\12\cf\00\ee\a3Y\83@s\fd\f33\f2e\f1)`+c\1b\d05p\05\f2)\d05\00\ee\a3\0f`\17a\07\d0\18p\n\d0\18q\n\d0\18p\f6\d0\18\00\ee\ff\81\81\81\81\81\81\ff~~~~~~\db\aa\8b\cb\cb\ef\08\8f\0d\ec\a0\a0\b00\be_QQ\d9\d9\83\82\83\82\fb\e8\08\88\05\e2\be\a0\b8 >\80\80\80\80\f8\f7\85\b7\95\f5vTVTV:***9\b6\a5\b6\a55")
  (export "mem" (memory $0))
  (export "routine_512" (func $routine_512))
+ (func $routine_705 (type $0)
+  (local $var$0 i32)
+  (local $var$1 i32)
+  (block $label$0
+   (block $label$1
+    (block $label$2
+     (call $import$4
+      (get_global $global$3)
+     )
+    )
+    (block $label$3
+     (br $label$1)
+    )
+   )
+   (block $label$4
+    (block $label$5
+     (loop $label$6
+      (block $label$7
+       (block $label$8
+        (set_global $global$3
+         (call $import$3)
+        )
+       )
+       (if
+        (i32.eq
+         (get_global $global$3)
+         (i32.const 0)
+        )
+        (block $label$9
+         (br $label$5)
+        )
+        (block $label$10
+         (br $label$7)
+        )
+       )
+      )
+      (block $label$11
+       (block $label$12
+       )
+       (block $label$13
+        (br $label$6)
+       )
+      )
+     )
+    )
+    (block $label$14
+     (block $label$15
+      (return)
+     )
+     (unreachable)
+    )
+   )
+  )
+ )
  (func $routine_761 (type $0)
   (local $var$0 i32)
   (local $var$1 i32)
@@ -295,60 +349,6 @@
     (return)
    )
    (unreachable)
-  )
- )
- (func $routine_705 (type $0)
-  (local $var$0 i32)
-  (local $var$1 i32)
-  (block $label$0
-   (block $label$1
-    (block $label$2
-     (call $import$4
-      (get_global $global$3)
-     )
-    )
-    (block $label$3
-     (br $label$1)
-    )
-   )
-   (block $label$4
-    (block $label$5
-     (loop $label$6
-      (block $label$7
-       (block $label$8
-        (set_global $global$3
-         (call $import$3)
-        )
-       )
-       (if
-        (i32.eq
-         (get_global $global$3)
-         (i32.const 0)
-        )
-        (block $label$9
-         (br $label$5)
-        )
-        (block $label$10
-         (br $label$7)
-        )
-       )
-      )
-      (block $label$11
-       (block $label$12
-       )
-       (block $label$13
-        (br $label$6)
-       )
-      )
-     )
-    )
-    (block $label$14
-     (block $label$15
-      (return)
-     )
-     (unreachable)
-    )
-   )
   )
  )
  (func $routine_512 (type $0)
