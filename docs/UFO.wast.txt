@@ -61,6 +61,25 @@
    (unreachable)
   )
  )
+ (func $routine_728 (type $0)
+  (local $var$0 i32)
+  (local $var$1 i32)
+  (block $label$0
+   (block $label$1
+    (set_global $global$15
+     (i32.const 1)
+    )
+    (set_global $global$14
+     (i32.const 16)
+    )
+    (call $import$5
+     (get_global $global$14)
+    )
+    (return)
+   )
+   (unreachable)
+  )
+ )
  (func $routine_512 (type $0)
   (local $var$0 i32)
   (local $var$1 i32)
@@ -486,7 +505,7 @@
                               (br $label$82)
                              )
                              (block $label$85
-                              (br $label$21)
+                              (br $label$20)
                              )
                             )
                            )
@@ -534,7 +553,7 @@
                                (i32.const 1)
                               )
                               (block $label$89
-                               (br $label$20)
+                               (br $label$21)
                               )
                               (block $label$90
                                (br $label$87)
@@ -572,7 +591,7 @@
                 (block $label$98
                 )
                 (block $label$99
-                 (br $label$19)
+                 (br $label$18)
                 )
                )
               )
@@ -580,53 +599,53 @@
                (block $label$101
                )
                (block $label$102
-                (br $label$18)
+                (br $label$19)
                )
               )
              )
              (block $label$103
               (block $label$104
+               (set_global $global$14
+                (i32.const 8)
+               )
+               (set_global $global$14
+                (i32.and
+                 (get_global $global$14)
+                 (get_global $global$6)
+                )
+               )
               )
-              (block $label$105
-               (br $label$16)
+              (if
+               (i32.ne
+                (get_global $global$14)
+                (i32.const 8)
+               )
+               (block $label$105
+                (block $label$106
+                 (block $label$107
+                 )
+                 (block $label$108
+                  (br $label$19)
+                 )
+                )
+               )
+               (block $label$109
+                (block $label$110
+                 (block $label$111
+                 )
+                 (block $label$112
+                  (br $label$18)
+                 )
+                )
+               )
               )
              )
             )
-            (block $label$106
-             (block $label$107
-              (set_global $global$14
-               (i32.const 8)
-              )
-              (set_global $global$14
-               (i32.and
-                (get_global $global$14)
-                (get_global $global$6)
-               )
-              )
+            (block $label$113
+             (block $label$114
              )
-             (if
-              (i32.ne
-               (get_global $global$14)
-               (i32.const 8)
-              )
-              (block $label$108
-               (block $label$109
-                (block $label$110
-                )
-                (block $label$111
-                 (br $label$18)
-                )
-               )
-              )
-              (block $label$112
-               (block $label$113
-                (block $label$114
-                )
-                (block $label$115
-                 (br $label$19)
-                )
-               )
-              )
+             (block $label$115
+              (br $label$16)
              )
             )
            )
@@ -637,7 +656,7 @@
               (i32.and
                (i32.add
                 (get_global $global$8)
-                (i32.const 5)
+                (i32.const 15)
                )
                (i32.const 255)
               )
@@ -655,7 +674,7 @@
              (i32.and
               (i32.add
                (get_global $global$8)
-               (i32.const 15)
+               (i32.const 5)
               )
               (i32.const 255)
              )
@@ -721,25 +740,6 @@
      )
     )
    )
-  )
- )
- (func $routine_728 (type $0)
-  (local $var$0 i32)
-  (local $var$1 i32)
-  (block $label$0
-   (block $label$1
-    (set_global $global$15
-     (i32.const 1)
-    )
-    (set_global $global$14
-     (i32.const 16)
-    )
-    (call $import$5
-     (get_global $global$14)
-    )
-    (return)
-   )
-   (unreachable)
   )
  )
  (func $routine_694 (type $0)
