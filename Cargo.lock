@@ -2,7 +2,7 @@
 name = "emchipten"
 version = "0.1.0"
 dependencies = [
- "binaryen 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "binaryen 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -67,15 +67,15 @@ dependencies = [
 
 [[package]]
 name = "binaryen"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "binaryen-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "binaryen-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "binaryen-sys"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bindgen 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -523,8 +523,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d912da0db7fa85514874458ca3651fe2cddace8d0b0505571dbdcd41ab490159"
 "checksum backtrace 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "99f2ce94e22b8e664d95c57fff45b98a966c2252b60691d0b7aeeccd88d70983"
 "checksum backtrace-sys 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "afccc5772ba333abccdf60d55200fa3406f8c59dcf54d5f7998c9107d3799c7c"
-"checksum binaryen 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "35fb224cb1e0bfa1a2b5855a91900e66313592ccad60d05a76938d4d6385c963"
-"checksum binaryen-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c40a9b3babe3f73de0c844d7d7297fa794c316e9e5a7daea3e11a91e770c332d"
+"checksum binaryen 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d3af2182edb5a107c73f85290cb113a6f70d0e72a64c048f0029bfc4e1b62c53"
+"checksum binaryen-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9710802c2a948a933158c83fc2c50448057a156f7c2d6c7f94342526a8b92be1"
 "checksum bindgen 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)" = "33024f55a754d920637461adf87fb485702a69bdf7ac1d307b7e18da93bae505"
 "checksum bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1370e9fc2a6ae53aea8b7a5110edbd08836ed87c88736dfabccade1c2b44bff4"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
