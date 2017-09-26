@@ -24,7 +24,7 @@ impl Default for Opts {
 pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: &Opts) -> Result<Vec<u8>> {
     let mut builder = Module::new();
 
-    let procedure_fn_ty = builder.add_fn_type(None, &[], Ty::none());
+    let procedure_fn_ty = builder.add_fn_type(None::<&str>, &[], Ty::None);
 
     let mut ctx = TransCtx {
         builder: &mut builder,
@@ -39,34 +39,34 @@ pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: &Opts) -> Result<Vec<u8>> {
         // might actually read this data.
         let rom_segment = Segment::new(rom, ctx.builder.const_(Literal::I32(0x200)));
 
-        let segments = &[font_segment, rom_segment];
-        ctx.builder.set_memory(1, 1, Some(&"mem".into()), segments);
+        let segments = vec![font_segment, rom_segment];
+        ctx.builder.set_memory(1, 1, Option::Some("mem"), segments);
     }
 
-    ctx.add_import("clear_screen", &[], Ty::none());
-    ctx.add_import("random", &[], Ty::value(ValueTy::I32));
+    ctx.add_import("clear_screen", &[], Ty::None);
+    ctx.add_import("random", &[], Ty::I32);
     ctx.add_import(
         "draw",
         &[ValueTy::I32, ValueTy::I32, ValueTy::I32, ValueTy::I32],
-        Ty::value(ValueTy::I32),
+        Ty::I32,
     );
-    ctx.add_import("get_dt", &[], Ty::value(ValueTy::I32));
-    ctx.add_import("set_dt", &[ValueTy::I32], Ty::none());
-    ctx.add_import("set_st", &[ValueTy::I32], Ty::none());
-    ctx.add_import("wait_key", &[], Ty::value(ValueTy::I32));
-    ctx.add_import("store_bcd", &[ValueTy::I32, ValueTy::I32], Ty::none());
-    ctx.add_import("is_key_pressed", &[ValueTy::I32], Ty::value(ValueTy::I32));
+    ctx.add_import("get_dt", &[], Ty::I32);
+    ctx.add_import("set_dt", &[ValueTy::I32], Ty::None);
+    ctx.add_import("set_st", &[ValueTy::I32], Ty::None);
+    ctx.add_import("wait_key", &[], Ty::I32);
+    ctx.add_import("store_bcd", &[ValueTy::I32, ValueTy::I32], Ty::None);
+    ctx.add_import("is_key_pressed", &[ValueTy::I32], Ty::I32);
 
     let reg_i_init = ctx.builder.const_(Literal::I32(0));
     ctx.builder
-        .add_global(&"regI".into(), ValueTy::I32, true, reg_i_init);
+        .add_global("regI", ValueTy::I32, true, reg_i_init);
 
     for i in 0..16 {
         let reg = Reg::from_index(i);
         let reg_name = get_reg_name(reg);
         let init_expr = ctx.builder.const_(Literal::I32(0));
         ctx.builder
-            .add_global(&reg_name.into(), ValueTy::I32, true, init_expr);
+            .add_global(reg_name, ValueTy::I32, true, init_expr);
     }
 
     let mut binaryen_routines = HashMap::new();
@@ -80,11 +80,7 @@ pub fn trans_rom(rom: &[u8], cfg: &cfg::CFG, opts: &Opts) -> Result<Vec<u8>> {
         binaryen_routines.insert(routine_id, binaryen_fn_ref);
     }
 
-    // let start_binaryen_fn = &binaryen_routines[&ctx.cfg.start()];
-    // ctx.builder.set_start(start_binaryen_fn);
-
-    ctx.builder
-        .add_export(&"routine_512".into(), &"routine_512".into());
+    ctx.builder.add_fn_export("routine_512", "routine_512");
 
     if !ctx.builder.is_valid() {
         panic!("module is not valid");
@@ -109,9 +105,9 @@ struct TransCtx<'a> {
 
 impl<'a> TransCtx<'a> {
     fn add_import(&mut self, name: &str, param_tys: &[ValueTy], result_ty: Ty) {
-        let fn_ty = self.builder.add_fn_type(None, param_tys, result_ty);
+        let fn_ty = self.builder.add_fn_type(None::<&str>, param_tys, result_ty);
         self.builder
-            .add_import(&name.into(), &"env".into(), &name.into(), &fn_ty)
+            .add_fn_import(name, "env", name, &fn_ty)
     }
 }
 
@@ -135,8 +131,8 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn trans(mut self) -> FnRef {
-        let mut relooper = Relooper::new();
-        let mut relooper_blocks: HashMap<cfg::BasicBlockId, RelooperBlockId> = HashMap::new();
+        let mut relooper = self.builder.relooper();
+        let mut relooper_blocks: HashMap<cfg::BasicBlockId, PlainBlock> = HashMap::new();
         for bb_id in self.routine.bbs.keys() {
             let code = self.trans_bb(*bb_id);
             let relooper_block = relooper.add_block(code);
@@ -178,10 +174,10 @@ impl<'t> RoutineTransCtx<'t> {
 
         let relooper_entry_block = relooper_blocks[&self.routine.entry];
 
-        let body_code = relooper.render(self.builder, relooper_entry_block, LABEL_HELPER_LOCAL);
+        let body_code = relooper.render(relooper_entry_block, LABEL_HELPER_LOCAL);
         let var_types = &[ValueTy::I32, ValueTy::I32];
         self.builder.add_fn(
-            &func_name_from_addr(self.routine_id.0).into(),
+            func_name_from_addr(self.routine_id.0),
             self.procedure_fn_ty,
             var_types,
             body_code,
@@ -201,21 +197,21 @@ impl<'t> RoutineTransCtx<'t> {
 
         // Handle Ret terminator here to make Relooper's life easier...
         if let cfg::Terminator::Ret = bb.terminator() {
-            stmts.push(self.builder.ret(None));
+            stmts.push(self.builder.return_(None));
         }
 
-        self.builder.block(None, &stmts, Ty::none())
+        self.builder.block(None::<&str>, stmts, Some(Ty::None))
     }
 
     fn trans_instruction(&mut self, instruction: &Instruction, stmts: &mut Vec<Expr>) {
         match *instruction {
             Instruction::Call(addr) => {
-                let routine_name = func_name_from_addr(addr).into();
-                let call_expr = self.builder.call(&routine_name, &[]);
+                let routine_name = func_name_from_addr(addr);
+                let call_expr = self.builder.call(routine_name, vec![], Ty::None);
                 stmts.push(call_expr);
             }
             Instruction::ClearScreen => {
-                let clear_expr = self.trans_call_import("clear_screen", &[], Ty::none());
+                let clear_expr = self.trans_call_import("clear_screen", vec![], Ty::None);
                 stmts.push(clear_expr);
             }
             Instruction::PutImm { vx, imm } => {
@@ -236,7 +232,7 @@ impl<'t> RoutineTransCtx<'t> {
                 self.trans_apply(vx, vy, f, stmts);
             }
             Instruction::Randomize { vx, imm } => {
-                let rnd_expr = self.trans_call_import("random", &[], Ty::value(ValueTy::I32));
+                let rnd_expr = self.trans_call_import("random", vec![], Ty::I32);
                 let mask_imm_expr = self.load_imm(imm.0 as u32);
                 let mask_expr = self.builder
                     .binary(BinaryOp::AndI32, rnd_expr, mask_imm_expr);
@@ -249,8 +245,8 @@ impl<'t> RoutineTransCtx<'t> {
                 let load_i_expr = self.load_i();
                 let n_expr = self.load_imm(n.0 as u32);
 
-                let operands = &[x_expr, y_expr, load_i_expr, n_expr];
-                let draw_expr = self.trans_call_import("draw", operands, Ty::value(ValueTy::I32));
+                let operands = vec![x_expr, y_expr, load_i_expr, n_expr];
+                let draw_expr = self.trans_call_import("draw", operands, Ty::I32);
                 let store_expr = self.store_reg(Reg::Vf, draw_expr);
 
                 stmts.push(store_expr);
@@ -271,23 +267,23 @@ impl<'t> RoutineTransCtx<'t> {
                 stmts.push(store_i_expr);
             }
             Instruction::GetDT(vx) => {
-                let get_dt_expr = self.trans_call_import("get_dt", &[], Ty::value(ValueTy::I32));
+                let get_dt_expr = self.trans_call_import("get_dt", vec![], Ty::I32);
                 let store_expr = self.store_reg(vx, get_dt_expr);
                 stmts.push(store_expr);
             }
             Instruction::SetST(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_st_expr = self.trans_call_import("set_st", &[load_expr], Ty::none());
+                let set_st_expr = self.trans_call_import("set_st", vec![load_expr], Ty::None);
                 stmts.push(set_st_expr);
             }
             Instruction::SetDT(vx) => {
                 let load_expr = self.load_reg(vx);
-                let set_dt_expr = self.trans_call_import("set_dt", &[load_expr], Ty::none());
+                let set_dt_expr = self.trans_call_import("set_dt", vec![load_expr], Ty::None);
                 stmts.push(set_dt_expr);
             }
             Instruction::WaitKey(vx) => {
                 let wait_key_expr =
-                    self.trans_call_import("wait_key", &[], Ty::value(ValueTy::I32));
+                    self.trans_call_import("wait_key", vec![], Ty::I32);
                 let store_expr = self.store_reg(vx, wait_key_expr);
                 stmts.push(store_expr);
             }
@@ -314,7 +310,7 @@ impl<'t> RoutineTransCtx<'t> {
             Instruction::StoreBCD(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let i_expr = self.load_i();
-                let bcd_expr = self.trans_call_import("store_bcd", &[vx_expr, i_expr], Ty::none());
+                let bcd_expr = self.trans_call_import("store_bcd", vec![vx_expr, i_expr], Ty::None);
                 stmts.push(bcd_expr);
             }
             _ => panic!("unimplemented: {:#?}", instruction),
@@ -436,8 +432,8 @@ impl<'t> RoutineTransCtx<'t> {
         }
     }
 
-    fn trans_call_import(&mut self, name: &str, operands: &[Expr], result_ty: Ty) -> Expr {
-        self.builder.call_import(&name.into(), operands, result_ty)
+    fn trans_call_import<I: IntoIterator<Item=Expr>>(&mut self, name: &str, operands: I, result_ty: Ty) -> Expr {
+        self.builder.call_import(name, operands, result_ty)
     }
 
     fn trans_predicate(&mut self, predicate: Predicate) -> Expr {
@@ -455,7 +451,7 @@ impl<'t> RoutineTransCtx<'t> {
             Condition::Pressed(vx) => {
                 let vx_expr = self.load_reg(vx);
                 let pressed_expr =
-                    self.trans_call_import("is_key_pressed", &[vx_expr], Ty::value(ValueTy::I32));
+                    self.trans_call_import("is_key_pressed", vec![vx_expr], Ty::I32);
                 (pressed_expr, self.load_imm(1))
             }
         };
@@ -467,21 +463,21 @@ impl<'t> RoutineTransCtx<'t> {
     }
 
     fn load_i(&mut self) -> Expr {
-        self.builder.get_global(&"regI".into(), ValueTy::I32)
+        self.builder.get_global("regI", ValueTy::I32)
     }
 
     fn store_i(&mut self, value: Expr) -> Expr {
-        self.builder.set_global(&"regI".into(), value)
+        self.builder.set_global("regI", value)
     }
 
     fn load_reg(&mut self, reg: Reg) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.get_global(&reg_name.into(), ValueTy::I32)
+        self.builder.get_global(reg_name, ValueTy::I32)
     }
 
     fn store_reg(&mut self, reg: Reg, value: Expr) -> Expr {
         let reg_name = get_reg_name(reg);
-        self.builder.set_global(&reg_name.into(), value)
+        self.builder.set_global(reg_name, value)
     }
 
     fn load_imm(&mut self, c: u32) -> Expr {
