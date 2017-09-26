@@ -72,6 +72,8 @@ index = '''
 <html>
 <head></head>
 <body>
+<a href="https://github.com/pepyakin/emchipten">GitHub</a><br/>
+<h3>Choose ROM:</h3>
 '''
 
 
